@@ -76,7 +76,9 @@ import dev.liquidcalendar.ui.glass.PromptHost
 import dev.liquidcalendar.ui.glass.PromptSpec
 import dev.liquidcalendar.ui.glass.SheetSpec
 import dev.liquidcalendar.ui.glass.isDarkTheme
+import dev.liquidcalendar.ui.screens.AccountScreen
 import dev.liquidcalendar.ui.screens.CalendarTab
+import dev.liquidcalendar.ui.screens.CalendarsScreen
 import dev.liquidcalendar.ui.screens.LocalToast
 import dev.liquidcalendar.ui.screens.SettingsScreen
 import dev.liquidcalendar.ui.screens.TAB_COUNT
@@ -88,6 +90,8 @@ import dev.liquidcalendar.util.str
 /** Pantallas que se abren encima de las pestañas, apiladas. */
 sealed interface Overlay {
     data object Settings : Overlay
+    data object Account : Overlay
+    data object Calendars : Overlay
 }
 
 class MainActivity : ComponentActivity() {
@@ -216,7 +220,14 @@ private fun App(animated: Boolean) {
                 }
                 holder.SaveableStateProvider(key) {
                     when (current) {
-                        Overlay.Settings -> SettingsScreen(overlayPadding, ::pop)
+                        Overlay.Settings -> SettingsScreen(
+                            overlayPadding,
+                            ::pop,
+                            onAccount = { push(Overlay.Account) },
+                            onCalendars = { push(Overlay.Calendars) },
+                        )
+                        Overlay.Account -> AccountScreen(overlayPadding, ::pop)
+                        Overlay.Calendars -> CalendarsScreen(overlayPadding, ::pop, onAccount = { push(Overlay.Account) })
                     }
                 }
             }

@@ -64,6 +64,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -428,6 +429,8 @@ fun GlassTextField(
     singleLine: Boolean = true,
     focusRequester: FocusRequester? = null,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    enabled: Boolean = true,
 ) {
     val p = LocalGlass.current
     val style = textStyle ?: TextStyle(fontSize = 17.sp)
@@ -440,7 +443,9 @@ fun GlassTextField(
                 value = value,
                 onValueChange = onValueChange,
                 singleLine = singleLine,
-                textStyle = style.copy(color = p.content),
+                enabled = enabled,
+                visualTransformation = visualTransformation,
+                textStyle = style.copy(color = if (enabled) p.content else p.contentSecondary),
                 cursorBrush = SolidColor(p.accentFg),
                 keyboardOptions = keyboardOptions,
                 keyboardActions = keyboardActions,
@@ -471,6 +476,7 @@ fun SettingRow(
     modifier: Modifier = Modifier,
     subtitle: String? = null,
     onClick: (() -> Unit)? = null,
+    leading: @Composable (() -> Unit)? = null,
     trailing: @Composable (() -> Unit)? = null,
 ) {
     val p = LocalGlass.current
@@ -487,6 +493,7 @@ fun SettingRow(
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        leading?.invoke()
         Column(Modifier.weight(1f)) {
             Text(title, fontSize = 16.sp, fontWeight = FontWeight.Medium)
             if (subtitle != null) {

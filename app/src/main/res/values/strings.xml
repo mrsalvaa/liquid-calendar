@@ -15,8 +15,8 @@
     <string name="today">Today</string>
 
     <!-- Sin cuenta -->
-    <string name="no_account_title">No account yet</string>
-    <string name="no_account_subtitle">Add your CalDAV server in Settings to see your calendars.</string>
+    <string name="no_account_title">No events yet</string>
+    <string name="no_account_subtitle">You can use the calendar on this phone only, or connect your CalDAV server in Settings.</string>
     <string name="open_settings">Open settings</string>
 
     <!-- Ajustes -->
@@ -66,4 +66,71 @@
     <string name="hue_violet">Violet</string>
     <string name="hue_pink">Pink</string>
     <string name="hue_gray">Gray</string>
+
+    <!-- Calendarios -->
+    <string name="default_local_calendar">Personal</string>
+    <string name="unnamed_calendar">Untitled calendar</string>
+    <string name="calendars">Calendars</string>
+    <string name="on_this_phone">On this phone</string>
+    <string name="local_only_hint">Calendars on this phone are never uploaded to any server.</string>
+    <string name="new_local_calendar">New calendar on this phone</string>
+    <string name="calendar_name">Name</string>
+    <string name="create">Create</string>
+    <plurals name="events_count">
+        <item quantity="one">%d event</item>
+        <item quantity="other">%d events</item>
+    </plurals>
+    <string name="read_only">read-only</string>
+    <string name="show_calendar">Show %s</string>
+    <string name="sync_now">Sync now</string>
+    <string name="last_sync">Last sync: %s</string>
+    <string name="never_synced">Not synced yet</string>
+    <string name="syncing">Syncing…</string>
+    <string name="sync_done">Synced</string>
+    <string name="account_on_server">%1$s on %2$s</string>
+    <string name="needs_password_title">Enter your password again</string>
+    <string name="needs_password_text">The server rejected the password. Nothing will sync until you enter it again (some servers block your IP after a few failed attempts).</string>
+    <string name="needs_password_short">Needs your password again</string>
+    <string name="wait_until">The server asked to wait until %s.</string>
+
+    <!-- Cuenta CalDAV -->
+    <string name="caldav_add">Add CalDAV server</string>
+    <string name="server_address">Server address</string>
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="password_unchanged">Password (unchanged)</string>
+    <string name="account_hint">HTTPS only, with certificate checks. The password is encrypted with your phone\'s keystore and never shows up in logs.</string>
+    <string name="test_connection">Test connection</string>
+    <string name="testing">Testing…</string>
+    <string name="save">Save</string>
+    <plurals name="test_ok">
+        <item quantity="one">Connected: %d calendar found</item>
+        <item quantity="other">Connected: %d calendars found</item>
+    </plurals>
+    <string name="remove_account">Remove account</string>
+    <string name="remove_account_title">Remove the account from this phone?</string>
+    <string name="remove_account_text">Its calendars and events are deleted from this phone only; nothing changes on the server.</string>
+    <string name="remove_account_confirm">Remove from this phone</string>
+    <plurals name="blocked">
+        <item quantity="one">Too many wrong passwords. Wait %d minute before trying again.</item>
+        <item quantity="other">Too many wrong passwords. Wait %d minutes before trying again.</item>
+    </plurals>
+    <string name="err_auth">Wrong username or password. Check them before trying again: your server may block your IP after a few failed attempts.</string>
+    <string name="err_forbidden">The server denied access.</string>
+    <string name="err_not_caldav">No CalDAV calendars were found at that address.</string>
+    <string name="err_redirect">The server redirected to another address and, for safety, it wasn\'t followed.</string>
+    <string name="err_tls">The server\'s certificate couldn\'t be verified.</string>
+    <string name="err_host">Couldn\'t find the server. Check the address.</string>
+    <string name="err_network">Couldn\'t connect to the server.</string>
+    <string name="err_busy">The server is busy. Try again later.</string>
+    <string name="err_server">The server had an error.</string>
+    <string name="err_too_large">The server\'s response was too large.</string>
+    <string name="err_generic">Something went wrong talking to the server.</string>
+    <string name="url_empty">Enter the server address.</string>
+    <string name="url_http">Only https:// addresses are allowed.</string>
+    <string name="url_credentials">Don\'t put the username or password in the address.</string>
+    <string name="url_query">The address can\'t contain ? or #.</string>
+    <string name="url_port">Invalid port.</string>
+    <string name="url_invalid">Invalid address.</string>
+    <string name="fields_required">Fill in the username and password.</string>
 </resources>

@@ -15,8 +15,8 @@
     <string name="today">Hoy</string>
 
     <!-- Sin cuenta -->
-    <string name="no_account_title">Todavía no hay ninguna cuenta</string>
-    <string name="no_account_subtitle">Agregá tu servidor CalDAV en Ajustes para ver tus calendarios.</string>
+    <string name="no_account_title">Todavía no hay eventos</string>
+    <string name="no_account_subtitle">Podés usar el calendario solo en este celu o conectar tu servidor CalDAV en Ajustes.</string>
     <string name="open_settings">Abrir ajustes</string>
 
     <!-- Ajustes -->
@@ -66,4 +66,74 @@
     <string name="hue_violet">Violeta</string>
     <string name="hue_pink">Rosa</string>
     <string name="hue_gray">Gris</string>
+
+    <!-- Calendarios -->
+    <string name="default_local_calendar">Personal</string>
+    <string name="unnamed_calendar">Calendario sin nombre</string>
+    <string name="calendars">Calendarios</string>
+    <string name="on_this_phone">En este celu</string>
+    <string name="local_only_hint">Los calendarios de este celu no se suben a ningún servidor.</string>
+    <string name="new_local_calendar">Nuevo calendario en este celu</string>
+    <string name="calendar_name">Nombre</string>
+    <string name="create">Crear</string>
+    <plurals name="events_count">
+        <item quantity="one">%d evento</item>
+        <item quantity="many">%d eventos</item>
+        <item quantity="other">%d eventos</item>
+    </plurals>
+    <string name="read_only">solo lectura</string>
+    <string name="show_calendar">Mostrar %s</string>
+    <string name="sync_now">Sincronizar ahora</string>
+    <string name="last_sync">Última sincronización: %s</string>
+    <string name="never_synced">Todavía no se sincronizó</string>
+    <string name="syncing">Sincronizando…</string>
+    <string name="sync_done">Sincronizado</string>
+    <string name="account_on_server">%1$s en %2$s</string>
+    <string name="needs_password_title">Volvé a ingresar la contraseña</string>
+    <string name="needs_password_text">El servidor rechazó la contraseña. No se sincroniza nada hasta que la ingreses de nuevo (algunos servidores bloquean la IP tras unos pocos intentos fallidos).</string>
+    <string name="needs_password_short">Requiere volver a ingresar la contraseña</string>
+    <string name="wait_until">El servidor pidió esperar hasta las %s.</string>
+
+    <!-- Cuenta CalDAV -->
+    <string name="caldav_add">Agregar servidor CalDAV</string>
+    <string name="server_address">Dirección del servidor</string>
+    <string name="username">Usuario</string>
+    <string name="password">Contraseña</string>
+    <string name="password_unchanged">Contraseña (sin cambios)</string>
+    <string name="account_hint">Solo HTTPS, verificando el certificado. La contraseña se guarda cifrada con el almacén de claves del celu y nunca aparece en los registros.</string>
+    <string name="test_connection">Probar conexión</string>
+    <string name="testing">Probando…</string>
+    <string name="save">Guardar</string>
+    <plurals name="test_ok">
+        <item quantity="one">Conexión correcta: %d calendario</item>
+        <item quantity="many">Conexión correcta: %d calendarios</item>
+        <item quantity="other">Conexión correcta: %d calendarios</item>
+    </plurals>
+    <string name="remove_account">Quitar cuenta</string>
+    <string name="remove_account_title">¿Quitar la cuenta de este celu?</string>
+    <string name="remove_account_text">Se borran sus calendarios y eventos solo de este celu; en el servidor no cambia nada.</string>
+    <string name="remove_account_confirm">Quitar del celu</string>
+    <plurals name="blocked">
+        <item quantity="one">Demasiadas contraseñas incorrectas. Esperá %d minuto antes de volver a probar.</item>
+        <item quantity="many">Demasiadas contraseñas incorrectas. Esperá %d minutos antes de volver a probar.</item>
+        <item quantity="other">Demasiadas contraseñas incorrectas. Esperá %d minutos antes de volver a probar.</item>
+    </plurals>
+    <string name="err_auth">Usuario o contraseña incorrectos. Revisalos antes de volver a probar: tu servidor puede bloquear la IP tras unos pocos intentos fallidos.</string>
+    <string name="err_forbidden">El servidor negó el acceso.</string>
+    <string name="err_not_caldav">No se encontraron calendarios CalDAV en esa dirección.</string>
+    <string name="err_redirect">El servidor redirigió a otra dirección y, por seguridad, no se siguió.</string>
+    <string name="err_tls">No se pudo verificar el certificado del servidor.</string>
+    <string name="err_host">No se encontró el servidor. Revisá la dirección.</string>
+    <string name="err_network">No se pudo conectar con el servidor.</string>
+    <string name="err_busy">El servidor está ocupado. Probá más tarde.</string>
+    <string name="err_server">El servidor tuvo un error.</string>
+    <string name="err_too_large">La respuesta del servidor era demasiado grande.</string>
+    <string name="err_generic">Algo salió mal al hablar con el servidor.</string>
+    <string name="url_empty">Escribí la dirección del servidor.</string>
+    <string name="url_http">Solo se admiten direcciones https://.</string>
+    <string name="url_credentials">No pongas el usuario ni la contraseña en la dirección.</string>
+    <string name="url_query">La dirección no puede tener ? ni #.</string>
+    <string name="url_port">Puerto inválido.</string>
+    <string name="url_invalid">Dirección inválida.</string>
+    <string name="fields_required">Completá el usuario y la contraseña.</string>
 </resources>

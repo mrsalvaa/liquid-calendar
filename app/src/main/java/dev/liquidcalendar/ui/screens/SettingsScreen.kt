@@ -17,7 +17,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.liquidcalendar.BuildConfig
 import dev.liquidcalendar.R
 import dev.liquidcalendar.data.AppSettings
+import dev.liquidcalendar.core.ServerUrl
+import dev.liquidcalendar.data.AccountState
+import dev.liquidcalendar.data.Repo
 import dev.liquidcalendar.data.Stores
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import dev.liquidcalendar.ui.glass.GlassCard
 import dev.liquidcalendar.ui.glass.LocalGlass
 import dev.liquidcalendar.ui.glass.SectionLabel
@@ -29,9 +35,11 @@ import java.time.temporal.WeekFields
 import java.util.Locale
 
 @Composable
-fun SettingsScreen(padding: PaddingValues, onBack: () -> Unit) {
+fun SettingsScreen(padding: PaddingValues, onBack: () -> Unit, onAccount: () -> Unit, onCalendars: () -> Unit) {
     val p = LocalGlass.current
     val s by Stores.settings.state.collectAsStateWithLifecycle()
+    val version by Repo.version.collectAsStateWithLifecycle()
+    val account by produceState(Repo.caldavAccount(), version) { value = withContext(Dispatchers.IO) { Repo.caldavAccount() } }
     val edit: ((AppSettings) -> AppSettings) -> Unit = { Stores.settings.update(it) }
 
     Column(
@@ -46,7 +54,17 @@ fun SettingsScreen(padding: PaddingValues, onBack: () -> Unit) {
 
         SectionLabel(str(R.string.account))
         GlassCard {
-            SettingRow(str(R.string.caldav_server), subtitle = str(R.string.not_configured))
+            val a = account
+            SettingRow(
+                str(if (a == null) R.string.caldav_add else R.string.caldav_server),
+                subtitle = when {
+                    a == null -> str(R.string.not_configured)
+                    a.state == AccountState.NEEDS_PASSWORD -> str(R.string.needs_password_short)
+                    else -> str(R.string.account_on_server, a.username.orEmpty(), a.serverUrl?.let { u -> (ServerUrl.parse(u, allowHttp = true) as? ServerUrl.Result.Ok)?.url?.host }.orEmpty())
+                },
+                onClick = onAccount,
+            )
+            SettingRow(str(R.string.calendars), subtitle = str(R.string.local_only_hint), onClick = onCalendars)
         }
 
         SectionLabel(str(R.string.appearance))
