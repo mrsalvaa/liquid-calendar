@@ -77,7 +77,15 @@ import dev.liquidcalendar.ui.glass.PromptSpec
 import dev.liquidcalendar.ui.glass.SheetSpec
 import dev.liquidcalendar.ui.glass.isDarkTheme
 import dev.liquidcalendar.ui.screens.AccountScreen
+import dev.liquidcalendar.data.AgendaItem
 import dev.liquidcalendar.ui.screens.CalendarTab
+import dev.liquidcalendar.ui.screens.EventDetailScreen
+import dev.liquidcalendar.ui.screens.TAB_DAY
+import dev.liquidcalendar.ui.screens.TabContext
+import dev.liquidcalendar.ui.screens.views.rememberDeviceClock
+import androidx.compose.runtime.mutableLongStateOf
+import java.time.DayOfWeek
+import java.time.LocalDate
 import dev.liquidcalendar.ui.screens.CalendarsScreen
 import dev.liquidcalendar.ui.screens.LocalToast
 import dev.liquidcalendar.ui.screens.SettingsScreen
@@ -92,6 +100,7 @@ sealed interface Overlay {
     data object Settings : Overlay
     data object Account : Overlay
     data object Calendars : Overlay
+    data class Event(val item: AgendaItem) : Overlay
 }
 
 class MainActivity : ComponentActivity() {
@@ -103,15 +112,19 @@ class MainActivity : ComponentActivity() {
             val settings by Stores.settings.state.collectAsStateWithLifecycle()
             SystemBarsFor(isDarkTheme(settings.themeMode))
             GlassTheme(settings.glassStyle) {
-                App(settings.animatedBackground)
+                App(settings.animatedBackground, settings.weekStart())
             }
         }
     }
 }
 
 @Composable
-private fun App(animated: Boolean) {
+private fun App(animated: Boolean, weekStart: DayOfWeek) {
     var tab by rememberSaveable { mutableIntStateOf(TAB_MONTH) }
+    val clock = rememberDeviceClock()
+    // Fecha elegida, compartida por todas las pestañas (se guarda como día desde 1970).
+    var selectedDay by rememberSaveable { mutableLongStateOf(clock.today.toEpochDay()) }
+    val selected = LocalDate.ofEpochDay(selectedDay)
     // Posición de la barra mientras se desliza entre pestañas (p. ej. 1,4), o null.
     var tabDrag by remember { mutableStateOf<Float?>(null) }
     val stack = remember { mutableStateListOf<Overlay>() }
@@ -149,6 +162,20 @@ private fun App(animated: Boolean) {
         end = insets.calculateEndPadding(dir),
     )
     val openSettings = { push(Overlay.Settings) }
+    val tabContext = TabContext(
+        selected = selected,
+        onSelect = { selectedDay = it.toEpochDay() },
+        clock = clock,
+        weekStart = weekStart,
+        padding = tabPadding,
+        onEvent = { push(Overlay.Event(it)) },
+        onOpenDay = {
+            selectedDay = it.toEpochDay()
+            tab = TAB_DAY
+        },
+        onSettings = openSettings,
+        onCalendars = { push(Overlay.Calendars) },
+    )
 
     CompositionLocalProvider(
         LocalActionSheet provides { sheet = it },
@@ -197,7 +224,7 @@ private fun App(animated: Boolean) {
                     .then(if (top != null) Modifier.clearAndSetSemantics { }.pointerInput(Unit) { swallowTouches() } else Modifier),
             ) {
                 SwipeTabs(tab, onScreen = top == null, onTab = { tab = it }, onDrag = { tabDrag = it }) { t ->
-                    CalendarTab(t, tabPadding, openSettings)
+                    CalendarTab(t, tabContext)
                 }
             }
 
@@ -228,6 +255,7 @@ private fun App(animated: Boolean) {
                         )
                         Overlay.Account -> AccountScreen(overlayPadding, ::pop)
                         Overlay.Calendars -> CalendarsScreen(overlayPadding, ::pop, onAccount = { push(Overlay.Account) })
+                        is Overlay.Event -> EventDetailScreen(current.item, clock, overlayPadding, ::pop)
                     }
                 }
             }

@@ -52,6 +52,7 @@ import dev.liquidcalendar.ui.glass.PromptSpec
 import dev.liquidcalendar.ui.glass.SectionLabel
 import dev.liquidcalendar.ui.glass.SettingRow
 import dev.liquidcalendar.ui.glass.muted
+import dev.liquidcalendar.ui.screens.views.OriginIcon
 import dev.liquidcalendar.util.plural
 import dev.liquidcalendar.util.str
 import androidx.compose.ui.graphics.toArgb
@@ -111,7 +112,7 @@ fun CalendarsScreen(padding: PaddingValues, onBack: () -> Unit, onAccount: () ->
 
         SectionLabel(str(R.string.on_this_phone))
         GlassCard {
-            calendars.filter { it.accountId == accounts.firstOrNull { a -> a.isLocal }?.id }.forEach { CalendarItem(it) }
+            calendars.filter { it.accountId == accounts.firstOrNull { a -> a.isLocal }?.id }.forEach { CalendarItem(it, local = true, host = null) }
             Text(str(R.string.local_only_hint), Modifier.padding(top = 4.dp), fontSize = 12.sp, color = p.contentSecondary)
         }
         GlassButton(
@@ -137,7 +138,7 @@ fun CalendarsScreen(padding: PaddingValues, onBack: () -> Unit, onAccount: () ->
             SectionLabel(str(R.string.account_on_server, caldav.username.orEmpty(), host))
             GlassCard {
                 AccountStatus(caldav, syncMessage, onAccount)
-                calendars.filter { it.accountId == caldav.id }.forEach { CalendarItem(it) }
+                calendars.filter { it.accountId == caldav.id }.forEach { CalendarItem(it, local = false, host = host) }
             }
         }
     }
@@ -165,17 +166,21 @@ private fun AccountStatus(account: Account, message: String?, onAccount: () -> U
 }
 
 @Composable
-private fun CalendarItem(c: CalendarRow) {
+private fun CalendarItem(c: CalendarRow, local: Boolean, host: String?) {
     val scope = rememberCoroutineScope()
     SettingRow(
         c.name,
+        // Siempre se ve si el calendario vive solo en el celu o se sincroniza con un servidor.
         subtitle = buildString {
-            append(plural(R.plurals.events_count, c.events))
+            append(if (local) str(R.string.local_badge) else str(R.string.synced_badge, host.orEmpty()))
+            append(" · ").append(plural(R.plurals.events_count, c.events))
             if (c.readOnly) append(" · ").append(str(R.string.read_only))
         },
         leading = {
             Box(Modifier.size(14.dp).clip(CircleShape).background(Color(c.color)))
-            Spacer(Modifier.width(14.dp))
+            Spacer(Modifier.width(10.dp))
+            OriginIcon(local, size = 16)
+            Spacer(Modifier.width(10.dp))
         },
     ) {
         Box(Modifier.semantics { contentDescription = str(R.string.show_calendar, c.name) }) {

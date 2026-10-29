@@ -14,10 +14,6 @@
     <string name="settings">Ajustes</string>
     <string name="today">Hoy</string>
 
-    <!-- Sin cuenta -->
-    <string name="no_account_title">Todavía no hay eventos</string>
-    <string name="no_account_subtitle">Podés usar el calendario solo en este celu o conectar tu servidor CalDAV en Ajustes.</string>
-    <string name="open_settings">Abrir ajustes</string>
 
     <!-- Ajustes -->
     <string name="account">Cuenta</string>
@@ -136,4 +132,38 @@
     <string name="url_port">Puerto inválido.</string>
     <string name="url_invalid">Dirección inválida.</string>
     <string name="fields_required">Completá el usuario y la contraseña.</string>
+
+    <!-- Vistas -->
+    <string name="prev_month">Mes anterior</string>
+    <string name="next_month">Mes siguiente</string>
+    <string name="prev_week">Semana anterior</string>
+    <string name="next_week">Semana siguiente</string>
+    <string name="prev_day">Día anterior</string>
+    <string name="next_day">Día siguiente</string>
+    <string name="all_day">Todo el día</string>
+    <plurals name="more_events">
+        <item quantity="one">+%d más</item>
+        <item quantity="many">+%d más</item>
+        <item quantity="other">+%d más</item>
+    </plurals>
+    <string name="no_events_day">Sin eventos</string>
+    <string name="agenda_empty">No hay eventos en los próximos días.</string>
+    <string name="show_more">Mostrar más</string>
+    <string name="untitled_event">(Sin título)</string>
+    <string name="recurring">Se repite</string>
+    <string name="local_badge">En este celu</string>
+    <string name="synced_badge">Sincronizado con %s</string>
+    <string name="time_range">%1$s – %2$s</string>
+    <string name="date_range">Del %1$s al %2$s</string>
+    <string name="location">Ubicación</string>
+    <string name="description">Descripción</string>
+    <string name="calendar_label">Calendario</string>
+    <string name="times_in_zone">Horarios en tu zona horaria (%s)</string>
+    <plurals name="day_summary">
+        <item quantity="one">%1$s, %2$d evento</item>
+        <item quantity="many">%1$s, %2$d eventos</item>
+        <item quantity="other">%1$s, %2$d eventos</item>
+    </plurals>
+    <string name="event_summary">%1$s, %2$s, %3$s</string>
+    <string name="today_marker">hoy</string>
 </resources>

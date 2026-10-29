@@ -14,10 +14,6 @@
     <string name="settings">Settings</string>
     <string name="today">Today</string>
 
-    <!-- Sin cuenta -->
-    <string name="no_account_title">No events yet</string>
-    <string name="no_account_subtitle">You can use the calendar on this phone only, or connect your CalDAV server in Settings.</string>
-    <string name="open_settings">Open settings</string>
 
     <!-- Ajustes -->
     <string name="account">Account</string>
@@ -133,4 +129,36 @@
     <string name="url_port">Invalid port.</string>
     <string name="url_invalid">Invalid address.</string>
     <string name="fields_required">Fill in the username and password.</string>
+
+    <!-- Vistas -->
+    <string name="prev_month">Previous month</string>
+    <string name="next_month">Next month</string>
+    <string name="prev_week">Previous week</string>
+    <string name="next_week">Next week</string>
+    <string name="prev_day">Previous day</string>
+    <string name="next_day">Next day</string>
+    <string name="all_day">All day</string>
+    <plurals name="more_events">
+        <item quantity="one">+%d more</item>
+        <item quantity="other">+%d more</item>
+    </plurals>
+    <string name="no_events_day">No events</string>
+    <string name="agenda_empty">No events in the coming days.</string>
+    <string name="show_more">Show more</string>
+    <string name="untitled_event">(No title)</string>
+    <string name="recurring">Repeats</string>
+    <string name="local_badge">On this phone</string>
+    <string name="synced_badge">Synced with %s</string>
+    <string name="time_range">%1$s – %2$s</string>
+    <string name="date_range">From %1$s to %2$s</string>
+    <string name="location">Location</string>
+    <string name="description">Description</string>
+    <string name="calendar_label">Calendar</string>
+    <string name="times_in_zone">Times in your time zone (%s)</string>
+    <plurals name="day_summary">
+        <item quantity="one">%1$s, %2$d event</item>
+        <item quantity="other">%1$s, %2$d events</item>
+    </plurals>
+    <string name="event_summary">%1$s, %2$s, %3$s</string>
+    <string name="today_marker">today</string>
 </resources>
