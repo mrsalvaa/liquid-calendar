@@ -1,14 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Solo para el servidor CalDAV que se configure (y, más adelante, las suscripciones). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <!--
-        Por ahora sin INTERNET: llega junto con la cuenta CalDAV. Sin backup ni transferencia de
-        datos a otro dispositivo (ver data_extraction_rules).
+        Sin backup ni transferencia de datos a otro dispositivo (ver data_extraction_rules) y sin
+        tráfico sin cifrar (ver network_security_config).
     -->
     <application
         android:name=".CalendarApp"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:usesCleartextTraffic="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
         android:label="@string/app_name"

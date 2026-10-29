@@ -44,6 +44,7 @@ android {
         debug {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
+            buildConfigField("boolean", "LOCALHOST_HTTP", "true")
         }
         release {
             isMinifyEnabled = true
@@ -53,6 +54,8 @@ android {
                 "proguard-rules.pro",
             )
             signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+            // La release nunca habla http, ni siquiera con el propio celu.
+            buildConfigField("boolean", "LOCALHOST_HTTP", "false")
         }
         // Como la release (optimizada, sin depuración) pero instalable junto a ella como
         // dev.liquidcalendar.debug: para probar en el celu con el rendimiento real.
@@ -62,8 +65,13 @@ android {
             versionNameSuffix = "-profile"
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
+            buildConfigField("boolean", "LOCALHOST_HTTP", "true")
         }
     }
+
+    // Debug y profile permiten http solo hacia 127.0.0.1/localhost (Radicale local por adb reverse).
+    sourceSets["debug"].res.srcDir("src/localTest/res")
+    sourceSets["profile"].res.srcDir("src/localTest/res")
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

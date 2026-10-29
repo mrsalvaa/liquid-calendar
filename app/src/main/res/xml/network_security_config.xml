@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Solo HTTPS y solo las autoridades de certificación del sistema: un certificado instalado por el
+    usuario (o por una app de "VPN" o de inspección de tráfico) no sirve para hacerse pasar por el
+    servidor. Sin pinning, porque los certificados de Let's Encrypt se renuevan cada pocos meses.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
