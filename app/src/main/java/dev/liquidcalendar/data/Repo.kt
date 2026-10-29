@@ -5,6 +5,11 @@ import android.content.Context
 import android.database.Cursor
 import androidx.core.database.sqlite.transaction
 import dev.liquidcalendar.core.dav.RemoteCalendar
+import dev.liquidcalendar.core.sync.ChangeKind
+import dev.liquidcalendar.core.sync.ChangeQueue
+import dev.liquidcalendar.core.sync.ChangeState
+import dev.liquidcalendar.core.sync.ChangeStore
+import dev.liquidcalendar.core.sync.PendingChange
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -206,7 +211,11 @@ object Repo {
 
     /** URL → ETag de los eventos guardados de un calendario. */
     fun eventEtags(calendarId: Long): Map<String, String?> =
-        db.readableDatabase.rawQuery("SELECT url, etag FROM event WHERE calendar_id = ? AND url IS NOT NULL", arrayOf(calendarId.toString())).use { c ->
+        // Los eventos con cambios sin subir no se comparan: la sincronización no los pisa ni los borra.
+        db.readableDatabase.rawQuery(
+            "SELECT url, etag FROM event WHERE calendar_id = ? AND url IS NOT NULL AND uid NOT IN (SELECT uid FROM change WHERE calendar_id = ?)",
+            arrayOf(calendarId.toString(), calendarId.toString()),
+        ).use { c ->
             buildMap { while (c.moveToNext()) put(c.getString(0), if (c.isNull(1)) null else c.getString(1)) }
         }
 
@@ -244,7 +253,7 @@ object Repo {
 
     fun candidates(fromMs: Long, toMs: Long): List<Candidate> = db.readableDatabase.rawQuery(
         """SELECT e.id, e.calendar_id, e.etag, e.ics FROM event e JOIN calendar c ON c.id = e.calendar_id
-           WHERE c.visible = 1 AND (e.start_ms IS NULL OR e.start_ms < ?) AND (e.end_ms IS NULL OR e.end_ms > ?)""",
+           WHERE c.visible = 1 AND e.deleted = 0 AND (e.start_ms IS NULL OR e.start_ms < ?) AND (e.end_ms IS NULL OR e.end_ms > ?)""",
         arrayOf(toMs.toString(), fromMs.toString()),
     ).use { c ->
         generateSequence { if (c.moveToNext()) Candidate(c.getLong(0), c.getLong(1), if (c.isNull(2)) null else c.getString(2), c.getString(3)) else null }.toList()
@@ -259,6 +268,231 @@ object Repo {
         return calendars().associate { c ->
             c.id to CalendarInfo(c.id, c.name, c.color, local = c.accountId in locals, host = hosts[c.accountId], readOnly = c.readOnly)
         }
+    }
+
+    // --- Eventos guardados y cola de cambios ---
+
+    data class EventRow(val id: Long, val calendarId: Long, val url: String?, val uid: String, val etag: String?, val ics: String, val deleted: Boolean)
+
+    fun event(calendarId: Long, uid: String): EventRow? = db.readableDatabase.rawQuery(
+        "SELECT id, calendar_id, url, uid, etag, ics, deleted FROM event WHERE calendar_id = ? AND uid = ?",
+        arrayOf(calendarId.toString(), uid),
+    ).use { c -> if (c.moveToFirst()) EventRow(c.getLong(0), c.getLong(1), c.str("url"), c.getString(3), c.str("etag"), c.getString(5), c.getLong(6) == 1L) else null }
+
+    fun calendarUrl(calendarId: Long): String? =
+        db.readableDatabase.rawQuery("SELECT url FROM calendar WHERE id = ?", arrayOf(calendarId.toString())).use { c ->
+            if (c.moveToFirst() && !c.isNull(0)) c.getString(0) else null
+        }
+
+    /** Guarda un evento en la caché (local o con cambio pendiente). No toca la cola. */
+    fun putEvent(calendarId: Long, uid: String, url: String?, etag: String?, ics: String) {
+        applyEvents(calendarId, listOf(StoredEvent(url, uid, etag, ics)), emptyList())
+    }
+
+    fun removeEvent(calendarId: Long, uid: String) {
+        db.writableDatabase.delete("event", "calendar_id = ? AND uid = ?", arrayOf(calendarId.toString(), uid))
+        changed()
+    }
+
+    /** Oculta el evento (borrado en el celu, pendiente de borrar en el servidor). */
+    fun markDeleted(calendarId: Long, uid: String) {
+        db.writableDatabase.update("event", ContentValues().apply { put("deleted", 1) }, "calendar_id = ? AND uid = ?", arrayOf(calendarId.toString(), uid))
+        changed()
+    }
+
+    /** UIDs con cambios sin subir (o en conflicto/fallidos): la sincronización no los pisa. */
+    fun pendingUids(calendarId: Long): Set<String> =
+        db.readableDatabase.rawQuery("SELECT uid FROM change WHERE calendar_id = ?", arrayOf(calendarId.toString())).use { c ->
+            buildSet { while (c.moveToNext()) add(c.getString(0)) }
+        }
+
+    data class ChangeRow(val change: PendingChange, val calendarId: Long, val summary: String?, val createdAt: Long)
+
+    private fun Cursor.change(): ChangeRow = ChangeRow(
+        PendingChange(
+            id = long("id")!!,
+            calendarUrl = str("calendar_url").orEmpty(),
+            uid = str("uid")!!,
+            kind = ChangeKind.valueOf(str("kind")!!),
+            url = str("url")!!,
+            ics = str("ics"),
+            baseEtag = str("base_etag"),
+            state = ChangeState.valueOf(str("state")!!),
+            error = str("error"),
+            serverIcs = str("server_ics"),
+            serverEtag = str("server_etag"),
+        ),
+        calendarId = long("calendar_id")!!,
+        summary = str("summary"),
+        createdAt = long("created_at")!!,
+    )
+
+    private const val CHANGE_SELECT = "SELECT ch.*, c.url AS calendar_url FROM change ch JOIN calendar c ON c.id = ch.calendar_id"
+
+    fun changes(): List<ChangeRow> = db.readableDatabase.rawQuery("$CHANGE_SELECT ORDER BY ch.id", null).use { c ->
+        generateSequence { if (c.moveToNext()) c.change() else null }.toList()
+    }
+
+    fun changeFor(calendarId: Long, uid: String): ChangeRow? =
+        db.readableDatabase.rawQuery("$CHANGE_SELECT WHERE ch.calendar_id = ? AND ch.uid = ? ORDER BY ch.id DESC LIMIT 1", arrayOf(calendarId.toString(), uid)).use { c ->
+            if (c.moveToFirst()) c.change() else null
+        }
+
+    /**
+     * Agrega un cambio a la cola, combinándolo con uno anterior del mismo evento que todavía no
+     * salió (crear + editar = crear con lo último, crear + borrar = nada, etc.).
+     */
+    fun enqueue(calendarId: Long, change: PendingChange, summary: String?) {
+        db.writableDatabase.transaction {
+            val previous = rawQuery(
+                "SELECT ch.*, c.url AS calendar_url FROM change ch JOIN calendar c ON c.id = ch.calendar_id WHERE ch.calendar_id = ? AND ch.uid = ? AND ch.state = 'QUEUED' ORDER BY ch.id DESC LIMIT 1",
+                arrayOf(calendarId.toString(), change.uid),
+            ).use { c -> if (c.moveToFirst()) c.change() else null }
+            if (previous == null) {
+                insertOrThrow("change", null, changeValues(calendarId, change, summary).apply { put("created_at", System.currentTimeMillis()) })
+            } else {
+                val merged = ChangeQueue.merge(previous.change, change).result
+                if (merged == null) {
+                    // Se creó y se borró sin llegar al servidor: no queda nada, ni en la cola ni en el celu.
+                    delete("change", "id = ?", arrayOf(previous.change.id.toString()))
+                    delete("event", "calendar_id = ? AND uid = ?", arrayOf(calendarId.toString(), change.uid))
+                } else {
+                    update("change", changeValues(calendarId, merged, summary), "id = ?", arrayOf(previous.change.id.toString()))
+                }
+            }
+        }
+        changed()
+    }
+
+    private fun changeValues(calendarId: Long, c: PendingChange, summary: String?) = ContentValues().apply {
+        put("calendar_id", calendarId)
+        put("uid", c.uid)
+        put("kind", c.kind.name)
+        put("url", c.url)
+        if (c.ics != null) put("ics", c.ics) else putNull("ics")
+        if (c.baseEtag != null) put("base_etag", c.baseEtag) else putNull("base_etag")
+        put("state", c.state.name)
+        if (c.error != null) put("error", c.error) else putNull("error")
+        if (c.serverIcs != null) put("server_ics", c.serverIcs) else putNull("server_ics")
+        if (c.serverEtag != null) put("server_etag", c.serverEtag) else putNull("server_etag")
+        if (summary != null) put("summary", summary) else putNull("summary")
+    }
+
+    /** La próxima sincronización vuelve a comparar todos los eventos de ese calendario. */
+    private fun android.database.sqlite.SQLiteDatabase.forgetCtag(calendarId: Long) {
+        update("calendar", ContentValues().apply { putNull("ctag") }, "id = ?", arrayOf(calendarId.toString()))
+    }
+
+    /** La cola de una cuenta, para el Pusher. */
+    fun changeStore(accountId: Long): ChangeStore = object : ChangeStore {
+        override fun queued(): List<PendingChange> = db.readableDatabase.rawQuery(
+            "$CHANGE_SELECT WHERE c.account_id = ? AND ch.state = 'QUEUED' ORDER BY ch.id",
+            arrayOf(accountId.toString()),
+        ).use { c -> generateSequence { if (c.moveToNext()) c.change().change else null }.toList() }
+
+        override fun done(change: PendingChange, etag: String?) {
+            db.writableDatabase.transaction {
+                val calendarId = rawQuery("SELECT calendar_id FROM change WHERE id = ?", arrayOf(change.id.toString())).use { c -> if (c.moveToFirst()) c.getLong(0) else null }
+                delete("change", "id = ?", arrayOf(change.id.toString()))
+                if (calendarId != null) {
+                    if (change.kind == ChangeKind.DELETE) {
+                        delete("event", "calendar_id = ? AND uid = ?", arrayOf(calendarId.toString(), change.uid))
+                    } else {
+                        // ETag nuevo; si el servidor no lo informó, queda null y la próxima
+                        // sincronización trae la versión del servidor.
+                        update("event", ContentValues().apply { if (etag != null) put("etag", etag) else putNull("etag") }, "calendar_id = ? AND uid = ?", arrayOf(calendarId.toString(), change.uid))
+                    }
+                }
+            }
+            changed()
+        }
+
+        override fun conflict(change: PendingChange, serverIcs: String?, serverEtag: String?) {
+            db.writableDatabase.update("change", ContentValues().apply {
+                put("state", ChangeState.CONFLICT.name)
+                if (serverIcs != null) put("server_ics", serverIcs) else putNull("server_ics")
+                if (serverEtag != null) put("server_etag", serverEtag) else putNull("server_etag")
+            }, "id = ?", arrayOf(change.id.toString()))
+            changed()
+        }
+
+        override fun failed(change: PendingChange, error: dev.liquidcalendar.core.dav.DavException) {
+            db.writableDatabase.update("change", ContentValues().apply {
+                put("state", ChangeState.FAILED.name)
+                put("error", error.code)
+            }, "id = ?", arrayOf(change.id.toString()))
+            changed()
+        }
+    }
+
+    /**
+     * Descarta un cambio: si era un evento nuevo, desaparece; si no, vuelve a mostrarse y su ETag
+     * se borra para que la próxima sincronización traiga la versión del servidor.
+     */
+    fun discard(changeId: Long) {
+        db.writableDatabase.transaction {
+            val row = rawQuery("$CHANGE_SELECT WHERE ch.id = ?", arrayOf(changeId.toString())).use { c -> if (c.moveToFirst()) c.change() else null } ?: return@transaction
+            delete("change", "id = ?", arrayOf(changeId.toString()))
+            forgetCtag(row.calendarId)
+            val args = arrayOf(row.calendarId.toString(), row.change.uid)
+            if (row.change.kind == ChangeKind.CREATE) {
+                delete("event", "calendar_id = ? AND uid = ?", args)
+            } else {
+                update("event", ContentValues().apply { put("deleted", 0); putNull("etag") }, "calendar_id = ? AND uid = ?", args)
+            }
+        }
+        changed()
+    }
+
+    /** Conflicto: quedarse con la versión del celu (se vuelve a subir sobre la del servidor). */
+    fun keepMine(changeId: Long) {
+        db.writableDatabase.transaction {
+            val row = rawQuery("$CHANGE_SELECT WHERE ch.id = ?", arrayOf(changeId.toString())).use { c -> if (c.moveToFirst()) c.change() else null } ?: return@transaction
+            val c = row.change
+            val values = ContentValues().apply {
+                put("state", ChangeState.QUEUED.name)
+                putNull("error")
+                when {
+                    // El servidor ya no lo tiene: si era un borrado, ya está; si no, se vuelve a crear.
+                    c.serverEtag == null && c.kind == ChangeKind.DELETE -> Unit
+                    c.serverEtag == null -> { put("kind", ChangeKind.CREATE.name); putNull("base_etag") }
+                    else -> put("base_etag", c.serverEtag)
+                }
+                putNull("server_ics")
+                putNull("server_etag")
+            }
+            if (c.serverEtag == null && c.kind == ChangeKind.DELETE) {
+                delete("change", "id = ?", arrayOf(changeId.toString()))
+                delete("event", "calendar_id = ? AND uid = ?", arrayOf(row.calendarId.toString(), c.uid))
+            } else {
+                update("change", values, "id = ?", arrayOf(changeId.toString()))
+            }
+        }
+        changed()
+    }
+
+    /** Conflicto: quedarse con la versión del servidor (se descarta el cambio del celu). */
+    fun keepServer(changeId: Long) {
+        db.writableDatabase.transaction {
+            val row = rawQuery("$CHANGE_SELECT WHERE ch.id = ?", arrayOf(changeId.toString())).use { c -> if (c.moveToFirst()) c.change() else null } ?: return@transaction
+            val c = row.change
+            delete("change", "id = ?", arrayOf(changeId.toString()))
+            forgetCtag(row.calendarId)
+            val args = arrayOf(row.calendarId.toString(), c.uid)
+            if (c.serverIcs == null) {
+                delete("event", "calendar_id = ? AND uid = ?", args)
+            } else {
+                val (start, end) = Db.eventBounds(c.serverIcs!!)
+                update("event", ContentValues().apply {
+                    put("ics", c.serverIcs)
+                    if (c.serverEtag != null) put("etag", c.serverEtag) else putNull("etag")
+                    put("deleted", 0)
+                    if (start != null) put("start_ms", start) else putNull("start_ms")
+                    if (end != null) put("end_ms", end) else putNull("end_ms")
+                }, "calendar_id = ? AND uid = ?", args)
+            }
+        }
+        changed()
     }
 
     private fun Cursor.str(col: String): String? = getColumnIndexOrThrow(col).let { if (isNull(it)) null else getString(it) }

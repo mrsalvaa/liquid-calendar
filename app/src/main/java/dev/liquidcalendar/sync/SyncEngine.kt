@@ -10,6 +10,7 @@ import dev.liquidcalendar.core.dav.DavException
 import dev.liquidcalendar.core.dav.Discovery
 import dev.liquidcalendar.core.ics.Ics
 import dev.liquidcalendar.core.sync.LoginGuard
+import dev.liquidcalendar.core.sync.Pusher
 import dev.liquidcalendar.core.sync.RetryDecision
 import dev.liquidcalendar.core.sync.RetryPolicy
 import dev.liquidcalendar.data.AccountState
@@ -119,6 +120,7 @@ object SyncEngine {
             val id = Repo.saveCaldavAccount(existingId, server.toString(), username, discovery.principalUrl, discovery.homeUrl)
             if (password != null) credentials.save(id, password)
             Repo.replaceRemoteCalendars(id, discovery.calendars) { str(R.string.unnamed_calendar) }
+            SyncScheduler.schedulePeriodic(dev.liquidcalendar.data.Stores.settings.value.syncIntervalMinutes, hasAccount = true)
             guard.reset()
             guardStore.update { emptyList() }
             id
@@ -129,6 +131,7 @@ object SyncEngine {
         mutex.withLock {
             Repo.deleteAccount(id)
             credentials.delete(id)
+            SyncScheduler.cancelAll()
         }
     }
 
@@ -144,8 +147,12 @@ object SyncEngine {
                 Repo.updateSyncState(account.id, AccountState.NEEDS_PASSWORD, "MissingCredentials", null, 0)
                 return@withLock SyncResult.NeedsPassword
             }
-            val caldav = CalDav(DavClient(server, Credentials(account.username, password)))
+            val dav = DavClient(server, Credentials(account.username, password))
+            val caldav = CalDav(dav)
             try {
+                // Primero se sube lo pendiente, en orden. Un 401, 429/503, 5xx o error de red corta
+                // acá con las mismas reglas que el resto de la sincronización.
+                Pusher(dav).push(Repo.changeStore(account.id))
                 val remote = account.homeUrl?.let(caldav::listCalendars) ?: caldav.discover().calendars
                 Repo.replaceRemoteCalendars(account.id, remote) { str(R.string.unnamed_calendar) }
                 val rows = Repo.calendars().filter { it.accountId == account.id }.associateBy { it.url }
@@ -188,10 +195,13 @@ object SyncEngine {
         val changed = remote.filter { (url, etag) -> etag == null || local[url] != etag }.keys
         val deleted = local.keys - remote.keys
         val fetched = if (changed.isEmpty()) emptyList() else caldav.multiget(calendarUrl, changed)
+        val pending = Repo.pendingUids(calendarId)
         val upserts = fetched.mapNotNull { r ->
             val ics = r.ics ?: return@mapNotNull null
             // Un archivo que no se puede leer se salta (sin cortar el resto de la sincronización).
             val uid = Ics.uid(ics) ?: return@mapNotNull null
+            // Un evento con cambios locales sin subir no se pisa con la versión del servidor.
+            if (uid in pending) return@mapNotNull null
             Repo.StoredEvent(r.url, uid, r.etag, ics)
         }
         Repo.applyEvents(calendarId, upserts, deleted)

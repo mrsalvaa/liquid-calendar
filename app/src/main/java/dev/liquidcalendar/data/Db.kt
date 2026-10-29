@@ -70,6 +70,7 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
         )
         db.execSQL("CREATE INDEX event_url ON event (calendar_id, url)")
         db.execSQL(RANGE_INDEX)
+        createV3(db)
 
         db.insert("account", null, ContentValues().apply {
             put("id", LOCAL_ACCOUNT)
@@ -98,11 +99,39 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
                 }
             }
         }
+        if (oldVersion < 3) createV3(db)
+    }
+
+    /**
+     * v3: cambios locales pendientes de subir. [change] es la cola (persistente; el id da el
+     * orden). En event, deleted = borrado en el celu y pendiente de borrar en el servidor (no se
+     * muestra). Un evento con filas en change no se pisa al sincronizar.
+     */
+    private fun createV3(db: SQLiteDatabase) {
+        db.execSQL("ALTER TABLE event ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0")
+        db.execSQL(
+            """CREATE TABLE change (
+                id INTEGER PRIMARY KEY,
+                calendar_id INTEGER NOT NULL REFERENCES calendar(id) ON DELETE CASCADE,
+                uid TEXT NOT NULL,
+                kind TEXT NOT NULL,
+                url TEXT NOT NULL,
+                ics TEXT,
+                base_etag TEXT,
+                state TEXT NOT NULL DEFAULT 'QUEUED',
+                error TEXT,
+                server_ics TEXT,
+                server_etag TEXT,
+                summary TEXT,
+                created_at INTEGER NOT NULL
+            )""",
+        )
+        db.execSQL("CREATE INDEX change_uid ON change (calendar_id, uid)")
     }
 
     companion object {
         const val NAME = "calendar.db"
-        const val VERSION = 2
+        const val VERSION = 3
         const val LOCAL_ACCOUNT = 1L
         const val KIND_LOCAL = "local"
         const val KIND_CALDAV = "caldav"

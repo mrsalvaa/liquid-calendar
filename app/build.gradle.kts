@@ -118,4 +118,5 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.backdrop)
+    implementation(libs.work.runtime)
 }

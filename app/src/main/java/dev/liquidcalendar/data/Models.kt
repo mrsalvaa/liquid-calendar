@@ -21,6 +21,8 @@ data class AppSettings(
     val appIcon: Int = 0,
     /** Primer día de la semana: 0 = según el idioma del teléfono, 1 (lunes) a 7 (domingo). */
     val firstDayOfWeek: Int = 7,
+    /** Sincronización en segundo plano, en minutos (0 = solo a mano). Mínimo 30. */
+    val syncIntervalMinutes: Int = 60,
 ) {
     val glassStyle: GlassStyle get() = GlassStyle(themeMode, backgroundMode, colorSet, accentColor)
 

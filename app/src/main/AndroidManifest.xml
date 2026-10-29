@@ -1,8 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Solo para el servidor CalDAV que se configure (y, más adelante, las suscripciones). -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!--
+        WorkManager agrega WAKE_LOCK, ACCESS_NETWORK_STATE y RECEIVE_BOOT_COMPLETED (sincronizar
+        solo con red y seguir después de reiniciar). FOREGROUND_SERVICE no hace falta: la app
+        nunca usa servicios en primer plano, así que se quita junto con ese servicio.
+    -->
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE"
+        tools:node="remove" />
 
     <!--
         Sin backup ni transferencia de datos a otro dispositivo (ver data_extraction_rules) y sin
@@ -96,5 +106,9 @@
                 <category android:name="android.intent.category.APP_CALENDAR" />
             </intent-filter>
         </activity-alias>
+
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            tools:node="remove" />
     </application>
 </manifest>
