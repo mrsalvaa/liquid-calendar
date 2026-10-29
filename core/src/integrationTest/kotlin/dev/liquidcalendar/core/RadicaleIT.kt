@@ -4,7 +4,10 @@ import dev.liquidcalendar.core.dav.CalDav
 import dev.liquidcalendar.core.dav.Credentials
 import dev.liquidcalendar.core.dav.DavClient
 import dev.liquidcalendar.core.dav.DavException
+import dev.liquidcalendar.core.ics.DraftTime
+import dev.liquidcalendar.core.ics.EventDraft
 import dev.liquidcalendar.core.ics.Ics
+import dev.liquidcalendar.core.ics.IcsWriter
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -111,6 +114,57 @@ class RadicaleIT {
         assertTrue(events[0].recurring)
         assertNotNull(events[1].recurrenceId)
         assertEquals("serie-$uid", Ics.uid(fetched.ics!!))
+    }
+
+    private val client get() = DavClient(server, Credentials(user, password))
+
+    private fun draft(title: String) = EventDraft(
+        title, "Aula 5", null,
+        DraftTime.Timed(java.time.Instant.parse("2026-11-04T12:00:00Z"), java.time.Instant.parse("2026-11-04T15:00:00Z")),
+    )
+
+    @Test
+    fun createEditDeleteWithPreconditions() {
+        val dav = client
+        val newUid = IcsWriter.newUid()
+        val url = dav.url("${calendarUrl}$newUid.ics")
+        val ics = IcsWriter.create(newUid, draft("Parcial"))
+        // Crear: If-None-Match: *. Una segunda creación en la misma URL no pisa nada.
+        val etag1 = assertNotNull(dav.put(url, ics, ifNoneMatch = true))
+        assertFailsWith<DavException.PreconditionFailed> { dav.put(url, ics, ifNoneMatch = true) }
+
+        // Editar con el ETag correcto.
+        val before = IcsWriter.draftOf(Ics.parseResource(ics), newUid, java.time.ZoneOffset.UTC)!!
+        val edited = IcsWriter.patch(ics, newUid, before, before.copy(summary = "Parcial (cambiado)"))
+        val etag2 = assertNotNull(dav.put(url, edited, ifMatch = etag1))
+        assertTrue(etag2 != etag1)
+
+        // Con el ETag viejo: 412 y el servidor queda como estaba.
+        assertFailsWith<DavException.PreconditionFailed> { dav.put(url, ics, ifMatch = etag1) }
+        assertFailsWith<DavException.PreconditionFailed> { dav.delete(url, ifMatch = etag1) }
+        val current = dav.get(url)
+        assertEquals(etag2, current.etag)
+        assertEquals("Parcial (cambiado)", Ics.parseResource(String(current.body)).components.single().info.summary)
+
+        // Borrar con el ETag correcto.
+        dav.delete(url, ifMatch = etag2)
+        assertFailsWith<DavException.NotFound> { dav.get(url) }
+    }
+
+    @Test
+    fun anEventFromAnotherClientSurvivesAnEdit() {
+        val original = javaClass.getResource("/ics/davx5.ics")!!.readText()
+        val r = Ics.parseResource(original)
+        val dav = client
+        val url = dav.url("${calendarUrl}davx5.ics")
+        val etag = assertNotNull(dav.put(url, original, ifNoneMatch = true))
+        val before = IcsWriter.draftOf(r, r.uid!!, java.time.ZoneOffset.UTC)!!
+        dav.put(url, IcsWriter.patch(original, r.uid!!, before, before.copy(location = "Otra dirección")), ifMatch = etag)
+        val back = String(dav.get(url).body)
+        for (m in listOf("ATTENDEE;CN=Ana", "ORGANIZER", "CATEGORIES:Salud,Personal", "X-MOZ-GENERATION", "BEGIN:VALARM", "X-WR-ALARMUID")) {
+            assertTrue(m in back.replace("\r\n ", ""), "se perdió $m")
+        }
+        assertEquals("Otra dirección", Ics.parseResource(back).components.single().info.location)
     }
 
     @Test

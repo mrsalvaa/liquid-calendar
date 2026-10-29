@@ -59,16 +59,56 @@ class DavClient(
     fun report(url: HttpUrl, depth: Int, body: String): List<DavResponse> = multistatus(send("REPORT", url, body, depth))
 
     /** Ejecuta una petición siguiendo solo redirecciones al mismo origen; devuelve el cuerpo. */
-    fun send(method: String, url: HttpUrl, body: String?, depth: Int? = null): ByteArray {
+    fun send(method: String, url: HttpUrl, body: String?, depth: Int? = null): ByteArray =
+        execute(method, url, body, XML, emptyMap(), depth, followRedirects = true).body
+
+    /** Resultado de una petición: cuerpo y ETag (si el servidor lo mandó). */
+    class Result(val body: ByteArray, val etag: String?)
+
+    /**
+     * Sube un evento. Para crear, [ifNoneMatch] = true (If-None-Match: *: falla con 412 si ya
+     * existe algo en esa URL); para modificar, [ifMatch] con el ETag que se tiene (412 si alguien
+     * lo cambió). Devuelve el ETag nuevo, si el servidor lo informa.
+     */
+    fun put(url: HttpUrl, ics: String, ifMatch: String? = null, ifNoneMatch: Boolean = false): String? {
+        require(ifMatch != null || ifNoneMatch) { "Toda escritura lleva If-Match o If-None-Match" }
+        val headers = if (ifNoneMatch) mapOf("If-None-Match" to "*") else mapOf("If-Match" to ifMatch!!)
+        return execute("PUT", url, ics, ICS, headers, null, followRedirects = false).etag
+    }
+
+    /** Borra un recurso, solo si su ETag sigue siendo [ifMatch] (412 si cambió). */
+    fun delete(url: HttpUrl, ifMatch: String) {
+        execute("DELETE", url, null, null, mapOf("If-Match" to ifMatch), null, followRedirects = false)
+    }
+
+    /** Contenido actual de un recurso y su ETag (para mostrar la versión del servidor en un conflicto). */
+    fun get(url: HttpUrl): Result = execute("GET", url, null, null, emptyMap(), null, followRedirects = true)
+
+    /**
+     * Todas las peticiones pasan por acá. Las escrituras no siguen redirecciones ([followRedirects]
+     * = false): reenviar un cambio a otra URL sin control no es seguro.
+     */
+    private fun execute(
+        method: String,
+        url: HttpUrl,
+        body: String?,
+        type: okhttp3.MediaType?,
+        extraHeaders: Map<String, String>,
+        depth: Int?,
+        followRedirects: Boolean,
+    ): Result {
         var current = url
         repeat(MAX_REDIRECTS + 1) {
             requireSameOrigin(current)
             val request = Request.Builder()
                 .url(current)
-                .method(method, body?.toRequestBody(XML))
+                .method(method, body?.toRequestBody(type))
                 .header("Authorization", authorization)
                 .header("User-Agent", USER_AGENT)
-                .apply { if (depth != null) header("Depth", depth.toString()) }
+                .apply {
+                    if (depth != null) header("Depth", depth.toString())
+                    extraHeaders.forEach { (k, v) -> header(k, v) }
+                }
                 .build()
             val response = try {
                 http.newCall(request).execute()
@@ -83,8 +123,9 @@ class DavClient(
             }
             response.use { r ->
                 when (r.code) {
-                    in 200..299 -> return readBody(r)
+                    in 200..299 -> return Result(readBody(r), r.header("ETag"))
                     301, 302, 307, 308 -> {
+                        if (!followRedirects) throw DavException.UnexpectedStatus(r.code)
                         val location = r.header("Location") ?: throw DavException.UnexpectedStatus(r.code)
                         current = current.resolve(location) ?: throw DavException.RedirectRefused()
                         if (!isSameOrigin(current)) throw DavException.RedirectRefused()
@@ -139,6 +180,7 @@ class DavClient(
         const val MAX_REDIRECTS = 5
         const val USER_AGENT = "LiquidCalendar"
         private val XML = "application/xml; charset=utf-8".toMediaType()
+        private val ICS = "text/calendar; charset=utf-8".toMediaType()
 
         val MULTISTATUS = QName(Ns.DAV, "multistatus")
         val RESPONSE = QName(Ns.DAV, "response")

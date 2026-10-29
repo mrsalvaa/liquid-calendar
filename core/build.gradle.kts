@@ -21,6 +21,8 @@ kotlin {
 val integrationTest: SourceSet by sourceSets.creating {
     compileClasspath += sourceSets.main.get().output
     runtimeClasspath += sourceSets.main.get().output
+    // Los mismos .ics de ejemplo que las pruebas unitarias.
+    resources.srcDir("src/test/resources")
 }
 configurations[integrationTest.implementationConfigurationName].extendsFrom(configurations.testImplementation.get())
 configurations[integrationTest.runtimeOnlyConfigurationName].extendsFrom(configurations.testRuntimeOnly.get())
