@@ -20,6 +20,30 @@ Calendario CalDAV libre para Android, pensado para un servidor propio como
   propósito.
 - No se hace copia de seguridad en la nube ni se pasan los datos a otro celu.
 
+## Dependencias
+
+Las versiones están fijadas en `gradle/libs.versions.toml`. Además de AndroidX/Compose y
+[Backdrop](https://github.com/Kyant0/AndroidLiquidGlass) (como en las otras apps Liquid), `core` usa:
+
+| Biblioteca | Versión | Licencia | Para qué |
+|---|---|---|---|
+| OkHttp + Okio | 5.3.2 / 3.16.4 | Apache-2.0 | HTTP con el servidor CalDAV |
+| ical4j | 4.4.0 | BSD-3-Clause | Lectura de iCalendar y recurrencias |
+| commons-lang3, commons-codec | 3.18.0, 1.17.0 | Apache-2.0 | las pide ical4j |
+| threeten-extra | 1.8.0 | BSD-3-Clause | la pide ical4j |
+| slf4j-api | 2.0.12 | MIT | la pide ical4j (sin backend: no registra nada) |
+
+**OkHttp está fijado a propósito en la 5.3.2.** Desde la 5.4, su artefacto para Android exige
+`compileSdk` 36 (la 5.5 pide 37), y el AGP 8.9.3 que comparten Liquid Clock y Liquid Gallery no
+puede compilar contra esas versiones. Hay que pasar a un OkHttp más nuevo junto con la
+actualización de AGP y `compileSdk`. Mientras tanto, **antes de cada release revisá que la 5.3.2 (y
+Okio) no tengan vulnerabilidades conocidas**, por ejemplo en
+[osv.dev](https://osv.dev/list?ecosystem=Maven&q=com.squareup.okhttp3) y en el
+[registro de cambios](https://square.github.io/okhttp/changelogs/changelog/) de OkHttp.
+
+ical4j nunca descarga zonas horarias: está desactivado en `ical4j.properties` y R8 elimina ese
+código de la release.
+
 ## Compilar
 
 ```bash
