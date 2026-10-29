@@ -20,7 +20,7 @@ data class AppSettings(
     /** Índice del icono de la app (ver AppIcons). */
     val appIcon: Int = 0,
     /** Primer día de la semana: 0 = según el idioma del teléfono, 1 (lunes) a 7 (domingo). */
-    val firstDayOfWeek: Int = 0,
+    val firstDayOfWeek: Int = 7,
 ) {
     val glassStyle: GlassStyle get() = GlassStyle(themeMode, backgroundMode, colorSet, accentColor)
 

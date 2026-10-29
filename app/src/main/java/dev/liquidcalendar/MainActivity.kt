@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CalendarMonth
@@ -267,6 +268,9 @@ private fun SwipeTabs(
     }
     HorizontalPager(
         state = pager,
+        // Basta con arrastrar un 15 % del ancho (o un gesto rápido) para cambiar de pestaña; el
+        // valor por defecto pide pasar de la mitad.
+        flingBehavior = PagerDefaults.flingBehavior(pager, snapPositionalThreshold = 0.15f),
         beyondViewportPageCount = TAB_COUNT - 1,
         userScrollEnabled = onScreen,
         key = { it },

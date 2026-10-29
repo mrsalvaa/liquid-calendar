@@ -56,8 +56,8 @@ fun SettingsScreen(padding: PaddingValues, onBack: () -> Unit) {
         GlassCard {
             Text(str(R.string.first_day), fontSize = 16.sp, fontWeight = FontWeight.Medium)
             val localeStart = WeekFields.of(Locale.getDefault()).firstDayOfWeek
-            // 0 = según el idioma; después los tres días con que suele empezar la semana.
-            ChipRow(listOf(0, DayOfWeek.MONDAY.value, DayOfWeek.SATURDAY.value, DayOfWeek.SUNDAY.value), s.firstDayOfWeek, { v ->
+            // Domingo es el predeterminado; 0 = según el idioma del teléfono.
+            ChipRow(listOf(DayOfWeek.SUNDAY.value, DayOfWeek.MONDAY.value, DayOfWeek.SATURDAY.value, 0), s.firstDayOfWeek, { v ->
                 if (v == 0) str(R.string.first_day_auto, dayName(localeStart).lowercase()) else dayName(DayOfWeek.of(v))
             }) { v -> edit { it.copy(firstDayOfWeek = v) } }
         }

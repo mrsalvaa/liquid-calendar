@@ -5,18 +5,17 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -79,7 +78,7 @@ fun BackTitle(
     }
 }
 
-/** Fila de chips para elegir una opción; se desplaza si no entra. */
+/** Chips para elegir una opción; los que no entran pasan a la línea siguiente (nada queda cortado). */
 @Composable
 fun <T> ChipRow(
     options: List<T>,
@@ -88,11 +87,13 @@ fun <T> ChipRow(
     modifier: Modifier = Modifier,
     onSelect: (T) -> Unit,
 ) {
-    Box(modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-        Row(Modifier.padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            options.forEach { option ->
-                GlassChip(label(option), option == selected, { onSelect(option) })
-            }
+    FlowRow(
+        modifier.fillMaxWidth().padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        options.forEach { option ->
+            GlassChip(label(option), option == selected, { onSelect(option) })
         }
     }
 }
