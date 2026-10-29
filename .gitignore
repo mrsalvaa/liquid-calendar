@@ -1,0 +1,38 @@
+# Build
+.gradle/
+.kotlin/
+build/
+/app/build/
+/core/build/
+captures/
+.externalNativeBuild/
+.cxx/
+dist/
+
+# IDE y sistema
+local.properties
+.idea/
+*.iml
+.DS_Store
+
+# Claves de firma
+*.keystore
+*.jks
+*.p12
+signing.properties
+
+# Secretos y datos locales: nunca al repo
+.env
+.env.*
+!.env.example
+*.local.properties
+secrets/
+.secret-patterns
+*.htpasswd
+!test/radicale/users.htpasswd
+
+# Datos de Radicale de pruebas y exportaciones
+test/radicale/data/
+.radicale-venv/
+*.ics
+!core/src/test/resources/**/*.ics
