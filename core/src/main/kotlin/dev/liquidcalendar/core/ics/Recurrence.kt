@@ -1,0 +1,200 @@
+package dev.liquidcalendar.core.ics
+
+import net.fortuna.ical4j.model.Recur
+import java.time.Duration
+import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.temporal.Temporal
+
+/** Cuándo ocurre algo: días completos (sin zona, nunca se corren) o un intervalo exacto. */
+sealed interface When {
+    /** [first] incluido, [endExclusive] excluido: un evento de un día tiene endExclusive = first + 1. */
+    data class AllDay(val first: LocalDate, val endExclusive: LocalDate) : When
+
+    data class Timed(val start: Instant, val end: Instant) : When
+}
+
+/** Una ocurrencia concreta de un evento, lista para mostrar. */
+data class Occurrence(
+    val uid: String,
+    val summary: String?,
+    val location: String?,
+    val description: String?,
+    val time: When,
+    /** Pertenece a una serie (o es una excepción de una). */
+    val recurring: Boolean,
+    /**
+     * Identifica esta ocurrencia dentro de la serie: el inicio original (el RECURRENCE-ID que
+     * tendría o tiene). Estable aunque la ocurrencia se haya movido.
+     */
+    val key: String,
+)
+
+/** Cota del tiempo que puede ocupar un recurso, para filtrarlo en la base antes de expandirlo. */
+data class Bounds(val start: Instant, val end: Instant?)
+
+/**
+ * Expande series (RRULE, RDATE, EXDATE y excepciones con RECURRENCE-ID) solo dentro del rango
+ * pedido. Los eventos de todo el día se tratan como fechas, nunca como instantes, así que no
+ * cambian de día según la zona del dispositivo; las horas flotantes se interpretan en [zone].
+ */
+object Recurrence {
+    /** Tope de ocurrencias por serie y por rango: una regla absurda no puede trabar la app. */
+    const val MAX_PER_SERIES = 2000
+
+    /** Margen para fechas sin zona: cualquier zona del mundo está a menos de 14 h de UTC. */
+    private val SLACK: Duration = Duration.ofHours(14)
+
+    fun expand(resource: IcsResource, from: Instant, to: Instant, zone: ZoneId): List<Occurrence> {
+        if (!from.isBefore(to)) return emptyList()
+        val masters = resource.components.filter { it.recurrenceId == null }
+        val overrides = resource.components.filter { it.recurrenceId != null }
+        val result = mutableListOf<Occurrence>()
+        for (m in masters) {
+            // Las ocurrencias reemplazadas por una excepción no se generan desde la serie.
+            val replaced = overrides.filter { it.info.uid == m.info.uid }.mapNotNull { it.recurrenceId }.map { identity(it, zone) }.toSet()
+            val excluded = m.exdates.map { identity(it, zone) }.toSet() + replaced
+            for (start in starts(m, from, to, zone)) {
+                if (identity(start, zone) in excluded) continue
+                val time = window(start, m.length, zone)
+                if (overlaps(time, from, to, zone)) result += occurrence(m, time, start, zone, m.rrules.isNotEmpty() || m.rdates.isNotEmpty())
+            }
+        }
+        for (o in overrides) {
+            val time = window(o.start, o.length, zone)
+            if (overlaps(time, from, to, zone)) result += occurrence(o, time, o.recurrenceId!!, zone, recurring = true)
+        }
+        return result.sortedWith(compareBy({ sortKey(it.time, zone) }, { it.summary }))
+    }
+
+    /** Dónde puede caer el recurso: null en [Bounds.end] = sin fin (serie sin UNTIL ni COUNT). */
+    fun bounds(resource: IcsResource): Bounds? {
+        if (resource.components.isEmpty()) return null
+        var start: Instant? = null
+        var end: Instant? = null
+        var infinite = false
+        val utc = ZoneId.of("UTC")
+        for (c in resource.components) {
+            val s = approx(c.start, utc).minus(SLACK)
+            if (start == null || s < start) start = s
+            val lastStart: Temporal? = when {
+                c.recurrenceId != null || (c.rrules.isEmpty() && c.rdates.isEmpty()) -> c.start
+                c.rrules.any { it.until == null && it.count < 1 } -> {
+                    infinite = true
+                    null
+                }
+                else -> {
+                    val fromRules = c.rrules.mapNotNull { r -> lastOf(r, c.start) }
+                    (fromRules + c.rdates + c.start).maxByOrNull { approx(it, utc) }
+                }
+            }
+            if (lastStart != null) {
+                val e = approx(lastStart, utc).plus(lengthOf(c.length)).plus(SLACK)
+                if (end == null || e > end) end = e
+            }
+        }
+        return Bounds(start!!, if (infinite) null else end)
+    }
+
+    // --- Inicios de cada ocurrencia de una serie dentro del rango ---
+
+    private fun starts(c: EventComponent, from: Instant, to: Instant, zone: ZoneId): List<Temporal> {
+        if (c.rrules.isEmpty() && c.rdates.isEmpty()) return listOf(c.start)
+        // Una ocurrencia que empezó antes del rango puede seguir dentro: se amplía hacia atrás.
+        val windowStart = from.minus(lengthOf(c.length)).minus(SLACK)
+        val windowEnd = to.plus(SLACK)
+        val (a, b) = bounds(c.start, windowStart, windowEnd, zone)
+        val out = LinkedHashMap<Any, Temporal>()
+        // El DTSTART es siempre la primera ocurrencia (RFC 5545), lo diga o no la regla.
+        if (inRange(c.start, windowStart, windowEnd, zone)) out[identity(c.start, zone)] = c.start
+        for (rule in c.rrules) {
+            val dates = try {
+                rule.getDates(c.start, a, b, MAX_PER_SERIES)
+            } catch (e: Exception) {
+                emptyList()
+            }
+            for (d in dates) out.putIfAbsent(identity(d, zone), d)
+        }
+        for (d in c.rdates) if (inRange(d, windowStart, windowEnd, zone)) out.putIfAbsent(identity(d, zone), d)
+        return out.values.take(MAX_PER_SERIES)
+    }
+
+    /** Extremos del rango expresados en el mismo tipo que el inicio de la serie. */
+    private fun bounds(seed: Temporal, from: Instant, to: Instant, zone: ZoneId): Pair<Temporal, Temporal> = when (seed) {
+        is LocalDate -> from.atZone(zone).toLocalDate().minusDays(1) to to.atZone(zone).toLocalDate().plusDays(1)
+        is ZonedDateTime -> from.atZone(seed.zone) to to.atZone(seed.zone)
+        else -> from.atZone(zone).toLocalDateTime() to to.atZone(zone).toLocalDateTime()
+    }
+
+    private fun lastOf(rule: Recur<Temporal>, seed: Temporal): Temporal? = try {
+        val farEnd: Temporal = when (seed) {
+            is LocalDate -> seed.plusYears(200)
+            is ZonedDateTime -> seed.plusYears(200)
+            else -> (seed as LocalDateTime).plusYears(200)
+        }
+        rule.getDates(seed, seed, farEnd, MAX_PER_SERIES * 50).lastOrNull()
+    } catch (e: Exception) {
+        null
+    }
+
+    // --- Conversión de fechas ---
+
+    private fun window(start: Temporal, length: Length, zone: ZoneId): When = when (start) {
+        is LocalDate -> When.AllDay(start, start.plusDays((length as? Length.Days)?.days ?: 1))
+        is ZonedDateTime -> start.toInstant().let { When.Timed(it, it.plus(lengthOf(length))) }
+        else -> (start as LocalDateTime).atZone(zone).toInstant().let { When.Timed(it, it.plus(lengthOf(length))) }
+    }
+
+    private fun lengthOf(length: Length): Duration = when (length) {
+        is Length.Days -> Duration.ofDays(length.days)
+        is Length.Exact -> length.duration
+    }
+
+    private fun overlaps(time: When, from: Instant, to: Instant, zone: ZoneId): Boolean = when (time) {
+        is When.Timed -> time.start < to && (time.end > from || (time.end == time.start && time.start >= from))
+        is When.AllDay -> {
+            val fromDate = from.atZone(zone).toLocalDate()
+            // "to" es excluyente: si cae justo a medianoche, ese día ya no está en el rango.
+            val toZoned = to.atZone(zone)
+            val lastDate = if (toZoned.toLocalTime() == java.time.LocalTime.MIDNIGHT) toZoned.toLocalDate().minusDays(1) else toZoned.toLocalDate()
+            time.first <= lastDate && time.endExclusive > fromDate
+        }
+    }
+
+    private fun inRange(t: Temporal, from: Instant, to: Instant, zone: ZoneId): Boolean {
+        val i = approx(t, zone)
+        return i >= from && i < to
+    }
+
+    /** Instante aproximado (las fechas sin zona se toman en [zone]). */
+    private fun approx(t: Temporal, zone: ZoneId): Instant = when (t) {
+        is LocalDate -> t.atStartOfDay(zone).toInstant()
+        is ZonedDateTime -> t.toInstant()
+        else -> (t as LocalDateTime).atZone(zone).toInstant()
+    }
+
+    /** Para comparar ocurrencias (EXDATE, RECURRENCE-ID) sin depender de la zona en que se escribió. */
+    private fun identity(t: Temporal, zone: ZoneId): Any = when (t) {
+        is LocalDate -> t
+        is ZonedDateTime -> t.toInstant()
+        else -> (t as LocalDateTime).atZone(zone).toInstant()
+    }
+
+    private fun sortKey(time: When, zone: ZoneId): Instant = when (time) {
+        is When.AllDay -> time.first.atStartOfDay(zone).toInstant()
+        is When.Timed -> time.start
+    }
+
+    private fun occurrence(c: EventComponent, time: When, originalStart: Temporal, zone: ZoneId, recurring: Boolean) = Occurrence(
+        uid = c.info.uid,
+        summary = c.info.summary,
+        location = c.info.location,
+        description = c.info.description,
+        time = time,
+        recurring = recurring,
+        key = "${c.info.uid}|${identity(originalStart, zone)}",
+    )
+}
