@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Busca datos que no deben llegar al repo público: dominios propios, rutas de usuario, claves
 # privadas, contraseñas y hashes. Sin argumentos revisa lo que está en el índice (lo que se va a
-# commitear); con --all revisa todos los archivos versionados.
+# commitear); con --all, todos los archivos versionados; con --history, cada versión de cada
+# archivo en todos los commits y los mensajes de commit.
 #
 # Patrones personales (dominio, usuario, email...): uno por línea, como expresión regular
 # extendida, en .secret-patterns (ignorado por git). Una línea con "secret-check: ignore" se salta.
@@ -26,29 +27,55 @@ if [[ -f .secret-patterns ]]; then
     done < .secret-patterns
 fi
 
-if [[ "${1:-}" == "--all" ]]; then
-    mapfile -t files < <(git ls-files)
-    show() { cat -- "$1"; }
-else
-    mapfile -t files < <(git diff --cached --name-only --diff-filter=ACMR)
-    show() { git show ":$1"; }
-fi
+# Cada elemento de "files" es "objeto<TAB>ruta"; show() imprime el contenido de ese objeto.
+case "${1:-}" in
+    --all)
+        mapfile -t files < <(git ls-files -s | awk -F'\t' '{split($1, a, " "); print a[2] "\t" $2}')
+        ;;
+    --history)
+        # Todos los contenidos distintos que tuvo cada archivo en cualquier commit.
+        mapfile -t files < <(git rev-list --objects --all | git cat-file --batch-check='%(objecttype) %(objectname) %(rest)' |
+            awk '$1 == "blob" && $3 != "" {print $2 "\t" $3}' | sort -u)
+        ;;
+    *)
+        mapfile -t files < <(git diff --cached --name-only --diff-filter=ACMR | while read -r f; do printf '%s\t%s\n' "$(git rev-parse ":$f")" "$f"; done)
+        ;;
+esac
+show() { git cat-file -p "${1%%$'\t'*}"; }
 
 found=0
-for f in "${files[@]}"; do
+for entry in "${files[@]}"; do
+    f="${entry#*$'\t'}"
     [[ "$f" == "scripts/check-secrets.sh" ]] && continue
     # Solo texto: los binarios (jar del wrapper, imágenes) se saltan.
-    show "$f" | grep -Iq . 2>/dev/null || continue
+    show "$entry" | grep -Iq . 2>/dev/null || continue
     file_patterns=("${patterns[@]}")
     [[ "$f" =~ \.(kt|kts|java|xml)$ ]] || file_patterns+=("$kv_pattern")
     for p in "${file_patterns[@]}"; do
-        if hits=$(show "$f" | grep -nE -e "$p" | grep -v 'secret-check: ignore'); then
+        if hits=$(show "$entry" | grep -nE -e "$p" | grep -v 'secret-check: ignore'); then
             # Solo el número de línea: no se repite el secreto en la terminal.
-            echo "Posible secreto en $f, líneas: $(cut -d: -f1 <<<"$hits" | paste -sd, -)"
+            where="$f"
+            if [[ "${1:-}" == "--history" ]]; then
+                where="$f (en $(git log --all --format=%h --find-object="${entry%%$'\t'*}" | paste -sd, -))"
+            fi
+            echo "Posible secreto en $where, líneas: $(cut -d: -f1 <<<"$hits" | paste -sd, -)"
             found=1
         fi
     done
 done
+
+if [[ "${1:-}" == "--history" ]]; then
+    # Los mensajes de commit también son públicos.
+    for c in $(git rev-list --all); do
+        for p in "${patterns[@]}"; do
+            if git log -1 --format=%B "$c" | grep -qE -e "$p"; then
+                echo "Posible secreto en el mensaje del commit $(git rev-parse --short "$c")"
+                found=1
+            fi
+        done
+    done
+    echo "Commits revisados: $(git rev-list --all | wc -l)"
+fi
 
 if (( found )); then
     echo "Revisá esas líneas antes de commitear (o marcalas con 'secret-check: ignore' si son de prueba)."
