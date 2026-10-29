@@ -4,6 +4,7 @@ import dev.liquidcalendar.core.dav.CalDav
 import dev.liquidcalendar.core.dav.Credentials
 import dev.liquidcalendar.core.dav.DavClient
 import dev.liquidcalendar.core.dav.DavException
+import dev.liquidcalendar.core.ics.Ics
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -89,6 +90,27 @@ class RadicaleIT {
         val event = resources.single()
         assertEquals(etags.values.single(), event.etag)
         assertTrue(event.ics!!.contains("UID:$uid"))
+    }
+
+    @Test
+    fun seriesWithAnExceptionKeepsOneUid() {
+        val ics = listOf(
+            "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Liquid Calendar//IT//ES",
+            "BEGIN:VEVENT", "UID:serie-$uid", "DTSTAMP:20261001T000000Z",
+            "DTSTART;TZID=America/Argentina/Buenos_Aires:20261005T100000", "RRULE:FREQ=WEEKLY;BYDAY=MO", "SUMMARY:Serie", "END:VEVENT",
+            "BEGIN:VEVENT", "UID:serie-$uid", "DTSTAMP:20261001T000000Z",
+            "RECURRENCE-ID;TZID=America/Argentina/Buenos_Aires:20261012T100000",
+            "DTSTART;TZID=America/Argentina/Buenos_Aires:20261012T120000", "SUMMARY:Serie (movida)", "END:VEVENT",
+            "END:VCALENDAR", "",
+        ).joinToString("\r\n")
+        rawRequest("PUT", "${calendarUrl}serie.ics", ics, "text/calendar; charset=utf-8")
+        val dav = calDav()
+        val fetched = dav.multiget(calendarUrl, listOf("${calendarUrl}serie.ics")).single()
+        val events = Ics.parse(fetched.ics!!)
+        assertEquals(listOf("serie-$uid", "serie-$uid"), events.map { it.uid })
+        assertTrue(events[0].recurring)
+        assertNotNull(events[1].recurrenceId)
+        assertEquals("serie-$uid", Ics.uid(fetched.ics!!))
     }
 
     @Test

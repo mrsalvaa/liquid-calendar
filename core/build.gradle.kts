@@ -27,6 +27,7 @@ configurations[integrationTest.runtimeOnlyConfigurationName].extendsFrom(configu
 
 dependencies {
     implementation(libs.okhttp)
+    implementation(libs.ical4j)
     // XmlPullParser: Android ya lo trae; en la JVM (tests) lo da kxml2.
     compileOnly(libs.kxml2)
     testImplementation(libs.kxml2)

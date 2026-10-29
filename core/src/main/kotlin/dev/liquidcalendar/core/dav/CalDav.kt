@@ -39,7 +39,7 @@ class CalDav(private val dav: DavClient) {
             r[CALENDAR_HOME_SET]?.child(DavClient.HREF)?.text
         } ?: throw DavException.BadResponse("sin calendar-home-set")
         val homeUrl = dav.url(home)
-        return Discovery(principal.toString(), homeUrl.toString(), listCalendars(homeUrl))
+        return Discovery(principal.toString(), homeUrl.toString(), listCalendars(homeUrl.toString()))
     }
 
     private fun findPrincipal(url: HttpUrl): HttpUrl? = try {
@@ -54,8 +54,8 @@ class CalDav(private val dav: DavClient) {
     }
 
     /** Calendarios (con eventos) dentro del calendar-home-set. */
-    fun listCalendars(home: HttpUrl): List<RemoteCalendar> =
-        dav.propfind(home, 1, CALENDAR_PROPS)
+    fun listCalendars(homeUrl: String): List<RemoteCalendar> =
+        dav.propfind(dav.url(homeUrl), 1, CALENDAR_PROPS)
             .filter { it[RESOURCETYPE]?.has(CALENDAR) == true }
             .map { r ->
                 RemoteCalendar(
