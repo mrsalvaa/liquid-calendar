@@ -5,6 +5,9 @@ import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import dev.liquidcalendar.R
+import dev.liquidcalendar.core.ics.Ics
+import dev.liquidcalendar.core.ics.IcsException
+import dev.liquidcalendar.core.ics.Recurrence
 import dev.liquidcalendar.util.str
 
 /**
@@ -60,10 +63,13 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
                 uid TEXT NOT NULL,
                 etag TEXT,
                 ics TEXT NOT NULL,
+                start_ms INTEGER,
+                end_ms INTEGER,
                 UNIQUE (calendar_id, uid)
             )""",
         )
         db.execSQL("CREATE INDEX event_url ON event (calendar_id, url)")
+        db.execSQL(RANGE_INDEX)
 
         db.insert("account", null, ContentValues().apply {
             put("id", LOCAL_ACCOUNT)
@@ -76,14 +82,42 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
         })
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) {
+            // Cota de tiempo de cada evento, para traer solo lo que puede caer en la vista.
+            db.execSQL("ALTER TABLE event ADD COLUMN start_ms INTEGER")
+            db.execSQL("ALTER TABLE event ADD COLUMN end_ms INTEGER")
+            db.execSQL(RANGE_INDEX)
+            db.rawQuery("SELECT id, ics FROM event", null).use { c ->
+                while (c.moveToNext()) {
+                    val (start, end) = eventBounds(c.getString(1))
+                    db.update("event", ContentValues().apply {
+                        if (start != null) put("start_ms", start) else putNull("start_ms")
+                        if (end != null) put("end_ms", end) else putNull("end_ms")
+                    }, "id = ?", arrayOf(c.getLong(0).toString()))
+                }
+            }
+        }
+    }
 
     companion object {
         const val NAME = "calendar.db"
-        const val VERSION = 1
+        const val VERSION = 2
         const val LOCAL_ACCOUNT = 1L
         const val KIND_LOCAL = "local"
         const val KIND_CALDAV = "caldav"
         const val DEFAULT_COLOR = 0xFF8AB4F8.toInt()
+        private const val RANGE_INDEX = "CREATE INDEX event_range ON event (start_ms, end_ms)"
+
+        /**
+         * Inicio y fin aproximados (en ms) donde puede caer el recurso. Fin null = serie sin fin;
+         * los dos null = archivo ilegible (se trae siempre y la expansión lo descarta).
+         */
+        fun eventBounds(ics: String): Pair<Long?, Long?> = try {
+            val b = Recurrence.bounds(Ics.parseResource(ics))
+            (b?.start?.toEpochMilli()) to (b?.end?.toEpochMilli())
+        } catch (e: IcsException) {
+            null to null
+        }
     }
 }

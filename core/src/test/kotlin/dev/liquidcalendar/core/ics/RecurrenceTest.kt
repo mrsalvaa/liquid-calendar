@@ -152,6 +152,36 @@ class RecurrenceTest {
     }
 
     @Test
+    fun fastForwardGivesTheSameOccurrences() {
+        // Adelantar el inicio de la serie es solo una optimización: el resultado tiene que ser
+        // idéntico al de recorrerla desde el principio, para reglas y rangos muy distintos.
+        val rules = listOf(
+            "FREQ=DAILY", "FREQ=DAILY;INTERVAL=3", "FREQ=WEEKLY", "FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,WE,FR",
+            "FREQ=WEEKLY;BYDAY=SU;WKST=MO", "FREQ=MONTHLY", "FREQ=MONTHLY;INTERVAL=2;BYMONTHDAY=15",
+            "FREQ=MONTHLY;BYDAY=-1FR", "FREQ=MONTHLY;BYDAY=2TU", "FREQ=MONTHLY;BYMONTHDAY=31",
+            "FREQ=MONTHLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1", "FREQ=YEARLY", "FREQ=YEARLY;BYMONTH=3;BYDAY=2SU",
+            "FREQ=DAILY;UNTIL=20290101T000000Z", "FREQ=WEEKLY;COUNT=500",
+        )
+        val starts = listOf(
+            "DTSTART;TZID=America/Argentina/Buenos_Aires:20150107T093000",
+            "DTSTART;TZID=Europe/Madrid:20180331T230000",
+            "DTSTART:20120229T120000Z",
+            "DTSTART;VALUE=DATE:20130131",
+            "DTSTART:20160105T080000",
+        )
+        val windows = listOf("2026-10-25" to "2026-12-06", "2028-02-27" to "2028-03-05", "2031-03-29" to "2031-04-01")
+        for (rule in rules) for (start in starts) for ((f, t) in windows) for (zone in listOf(ba, madrid)) {
+            val r = res(*ev("UID:p", start, "DURATION:PT45M", "RRULE:$rule"))
+            val (from, to) = range(f, t, zone)
+            assertEquals(
+                Recurrence.expand(r, from, to, zone, fastForward = false),
+                Recurrence.expand(r, from, to, zone, fastForward = true),
+                "$rule | $start | $f | ${zone.id}",
+            )
+        }
+    }
+
+    @Test
     fun boundsForTheDatabaseFilter() {
         val single = Recurrence.bounds(res(*ev("UID:1", "DTSTART:20261030T150000Z", "DURATION:PT1H")))!!
         assertTrue(single.start < Instant.parse("2026-10-30T15:00:00Z") && single.end!! > Instant.parse("2026-10-30T16:00:00Z"))

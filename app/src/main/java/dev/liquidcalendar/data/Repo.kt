@@ -40,6 +40,17 @@ data class Account(
     val isLocal: Boolean get() = kind == Db.KIND_LOCAL
 }
 
+/** Lo que se muestra de un calendario en cualquier vista: siempre se sabe si es local o de un servidor. */
+data class CalendarInfo(
+    val id: Long,
+    val name: String,
+    val color: Int,
+    /** true = "En este celu" (nunca se sube); false = sincronizado con [host]. */
+    val local: Boolean,
+    val host: String?,
+    val readOnly: Boolean,
+)
+
 data class CalendarRow(
     val id: Long,
     val accountId: Long,
@@ -208,8 +219,9 @@ object Repo {
             val w = this
             deletedUrls.forEach { w.delete("event", "calendar_id = ? AND url = ?", arrayOf(calendarId.toString(), it)) }
             val statement = w.compileStatement(
-                """INSERT INTO event (calendar_id, url, uid, etag, ics) VALUES (?, ?, ?, ?, ?)
-                   ON CONFLICT (calendar_id, uid) DO UPDATE SET url = excluded.url, etag = excluded.etag, ics = excluded.ics""",
+                """INSERT INTO event (calendar_id, url, uid, etag, ics, start_ms, end_ms) VALUES (?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT (calendar_id, uid) DO UPDATE SET url = excluded.url, etag = excluded.etag,
+                   ics = excluded.ics, start_ms = excluded.start_ms, end_ms = excluded.end_ms""",
             )
             for (e in upserts) {
                 statement.clearBindings()
@@ -218,10 +230,35 @@ object Repo {
                 statement.bindString(3, e.uid)
                 if (e.etag != null) statement.bindString(4, e.etag) else statement.bindNull(4)
                 statement.bindString(5, e.ics)
+                val (start, end) = Db.eventBounds(e.ics)
+                if (start != null) statement.bindLong(6, start) else statement.bindNull(6)
+                if (end != null) statement.bindLong(7, end) else statement.bindNull(7)
                 statement.executeInsert()
             }
         }
         changed()
+    }
+
+    /** Un evento guardado que puede caer en [fromMs, toMs), de un calendario visible. */
+    data class Candidate(val id: Long, val calendarId: Long, val etag: String?, val ics: String)
+
+    fun candidates(fromMs: Long, toMs: Long): List<Candidate> = db.readableDatabase.rawQuery(
+        """SELECT e.id, e.calendar_id, e.etag, e.ics FROM event e JOIN calendar c ON c.id = e.calendar_id
+           WHERE c.visible = 1 AND (e.start_ms IS NULL OR e.start_ms < ?) AND (e.end_ms IS NULL OR e.end_ms > ?)""",
+        arrayOf(toMs.toString(), fromMs.toString()),
+    ).use { c ->
+        generateSequence { if (c.moveToNext()) Candidate(c.getLong(0), c.getLong(1), if (c.isNull(2)) null else c.getString(2), c.getString(3)) else null }.toList()
+    }
+
+    /** Calendarios con su cuenta, para mostrar el nombre, el color y si es local o de un servidor. */
+    fun calendarInfos(): Map<Long, CalendarInfo> {
+        val hosts = accounts().associate { a ->
+            a.id to a.serverUrl?.let { (dev.liquidcalendar.core.ServerUrl.parse(it, allowHttp = true) as? dev.liquidcalendar.core.ServerUrl.Result.Ok)?.url?.host }
+        }
+        val locals = accounts().filter { it.isLocal }.map { it.id }.toSet()
+        return calendars().associate { c ->
+            c.id to CalendarInfo(c.id, c.name, c.color, local = c.accountId in locals, host = hosts[c.accountId], readOnly = c.readOnly)
+        }
     }
 
     private fun Cursor.str(col: String): String? = getColumnIndexOrThrow(col).let { if (isNull(it)) null else getString(it) }

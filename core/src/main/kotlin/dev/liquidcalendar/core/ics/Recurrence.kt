@@ -48,7 +48,11 @@ object Recurrence {
     /** Margen para fechas sin zona: cualquier zona del mundo está a menos de 14 h de UTC. */
     private val SLACK: Duration = Duration.ofHours(14)
 
-    fun expand(resource: IcsResource, from: Instant, to: Instant, zone: ZoneId): List<Occurrence> {
+    /**
+     * [fastForward] (siempre en la app; los tests lo comparan con false) adelanta el inicio de las
+     * series sin COUNT hasta cerca del rango, para no recorrer años de ocurrencias pasadas.
+     */
+    fun expand(resource: IcsResource, from: Instant, to: Instant, zone: ZoneId, fastForward: Boolean = true): List<Occurrence> {
         if (!from.isBefore(to)) return emptyList()
         val masters = resource.components.filter { it.recurrenceId == null }
         val overrides = resource.components.filter { it.recurrenceId != null }
@@ -57,7 +61,7 @@ object Recurrence {
             // Las ocurrencias reemplazadas por una excepción no se generan desde la serie.
             val replaced = overrides.filter { it.info.uid == m.info.uid }.mapNotNull { it.recurrenceId }.map { identity(it, zone) }.toSet()
             val excluded = m.exdates.map { identity(it, zone) }.toSet() + replaced
-            for (start in starts(m, from, to, zone)) {
+            for (start in starts(m, from, to, zone, fastForward)) {
                 if (identity(start, zone) in excluded) continue
                 val time = window(start, m.length, zone)
                 if (overlaps(time, from, to, zone)) result += occurrence(m, time, start, zone, m.rrules.isNotEmpty() || m.rdates.isNotEmpty())
@@ -101,7 +105,7 @@ object Recurrence {
 
     // --- Inicios de cada ocurrencia de una serie dentro del rango ---
 
-    private fun starts(c: EventComponent, from: Instant, to: Instant, zone: ZoneId): List<Temporal> {
+    private fun starts(c: EventComponent, from: Instant, to: Instant, zone: ZoneId, fastForward: Boolean): List<Temporal> {
         if (c.rrules.isEmpty() && c.rdates.isEmpty()) return listOf(c.start)
         // Una ocurrencia que empezó antes del rango puede seguir dentro: se amplía hacia atrás.
         val windowStart = from.minus(lengthOf(c.length)).minus(SLACK)
@@ -112,7 +116,8 @@ object Recurrence {
         if (inRange(c.start, windowStart, windowEnd, zone)) out[identity(c.start, zone)] = c.start
         for (rule in c.rrules) {
             val dates = try {
-                rule.getDates(c.start, a, b, MAX_PER_SERIES)
+                val seed = if (fastForward) fastSeed(rule, c.start, a) else c.start
+                rule.getDates(seed, a, b, MAX_PER_SERIES)
             } catch (e: Exception) {
                 emptyList()
             }
@@ -120,6 +125,38 @@ object Recurrence {
         }
         for (d in c.rdates) if (inRange(d, windowStart, windowEnd, zone)) out.putIfAbsent(identity(d, zone), d)
         return out.values.take(MAX_PER_SERIES)
+    }
+
+    /**
+     * Un inicio equivalente más cercano a [windowStart]: avanzar períodos enteros de la regla (días,
+     * semanas, meses o años, respetando INTERVAL) no cambia qué fechas genera. No se hace si hay
+     * COUNT (hay que contar desde el principio) ni en reglas mensuales o anuales que empiezan
+     * después del día 28 (sumar meses cambiaría el día). Se deja un período de margen.
+     */
+    private fun fastSeed(rule: Recur<Temporal>, seed: Temporal, windowStart: Temporal): Temporal {
+        if (rule.count >= 1) return seed
+        val unit = when (rule.frequency?.name) {
+            "DAILY" -> java.time.temporal.ChronoUnit.DAYS
+            "WEEKLY" -> java.time.temporal.ChronoUnit.WEEKS
+            "MONTHLY" -> java.time.temporal.ChronoUnit.MONTHS
+            "YEARLY" -> java.time.temporal.ChronoUnit.YEARS
+            else -> return seed
+        }
+        val dayOfMonth = when (seed) {
+            is LocalDate -> seed.dayOfMonth
+            is ZonedDateTime -> seed.dayOfMonth
+            is LocalDateTime -> seed.dayOfMonth
+            else -> return seed
+        }
+        if (unit >= java.time.temporal.ChronoUnit.MONTHS && dayOfMonth > 28) return seed
+        val interval = rule.interval.coerceAtLeast(1).toLong()
+        val periods = try {
+            unit.between(seed, windowStart) / interval - 1
+        } catch (e: Exception) {
+            return seed
+        }
+        if (periods <= 0) return seed
+        return seed.plus(periods * interval, unit)
     }
 
     /** Extremos del rango expresados en el mismo tipo que el inicio de la serie. */
