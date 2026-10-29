@@ -1,0 +1,14 @@
+# Radicale de pruebas con Docker, alternativa a scripts/radicale-test.sh. Escucha solo en
+# 127.0.0.1:5232 y usa credenciales de prueba (ver test/radicale/make-users.py).
+#   docker compose -f docker-compose.test.yml up
+services:
+  radicale:
+    image: python:3.12-slim
+    ports:
+      - "127.0.0.1:5232:5232"
+    volumes:
+      - ./test/radicale:/conf:ro
+    command: >
+      sh -c "pip install --no-cache-dir radicale==3.8.3 bcrypt==5.0.0 &&
+             python -I /conf/make-users.py /data/users &&
+             radicale --config /conf/config"

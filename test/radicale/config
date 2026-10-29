@@ -1,0 +1,23 @@
+# Radicale de pruebas: igual que un servidor real (htpasswd con bcrypt, cada usuario solo ve lo
+# suyo) pero sin TLS y escuchando solo en el propio equipo. Las rutas /data las reescribe
+# scripts/radicale-test.sh para la ejecución con uv; docker-compose.test.yml las usa tal cual.
+[server]
+hosts = 0.0.0.0:5232
+max_content_length = 10000000
+
+[auth]
+type = htpasswd
+htpasswd_filename = /data/users
+htpasswd_encryption = bcrypt
+# Sin demoras entre intentos fallidos: los tests de 401 los provocan a propósito.
+delay = 0
+
+[rights]
+type = owner_only
+
+[storage]
+filesystem_folder = /data/collections
+
+[logging]
+level = warning
+mask_passwords = True
