@@ -16,6 +16,28 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.liquidcalendar.R
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.DeleteOutline
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.liquidcalendar.CalendarApp
+import dev.liquidcalendar.core.ics.EventDraft
+import dev.liquidcalendar.core.sync.ChangeState
+import dev.liquidcalendar.data.EditBlock
+import dev.liquidcalendar.data.Events
+import dev.liquidcalendar.data.Repo
+import dev.liquidcalendar.ui.glass.GlassButton
+import dev.liquidcalendar.ui.glass.LocalActionSheet
+import dev.liquidcalendar.ui.glass.SheetAction
+import dev.liquidcalendar.ui.glass.SheetSpec
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import dev.liquidcalendar.core.ics.When
 import dev.liquidcalendar.data.AgendaItem
 import dev.liquidcalendar.ui.glass.GlassCard
@@ -32,9 +54,15 @@ import java.util.Locale
 
 /** Detalle de una ocurrencia (solo lectura). */
 @Composable
-fun EventDetailScreen(item: AgendaItem, clock: DeviceClock, padding: PaddingValues, onBack: () -> Unit) {
+fun EventDetailScreen(item: AgendaItem, clock: DeviceClock, padding: PaddingValues, onBack: () -> Unit, onEdit: (EditTarget) -> Unit) {
     val p = LocalGlass.current
     val occ = item.occurrence
+    val sheet = LocalActionSheet.current
+    val version by Repo.version.collectAsStateWithLifecycle()
+    val editable by produceState<Pair<EventDraft?, EditBlock?>?>(null, version) { value = Events.draftFor(item, clock.zone) }
+    val change by produceState<Repo.ChangeRow?>(null, version) {
+        value = withContext(Dispatchers.IO) { Repo.changeFor(item.calendar.id, occ.uid) }
+    }
     Column(
         Modifier
             .fillMaxSize()
@@ -95,6 +123,53 @@ fun EventDetailScreen(item: AgendaItem, clock: DeviceClock, padding: PaddingValu
         GlassCard {
             CalendarBadge(item.calendar)
             if (item.calendar.readOnly) Text(str(R.string.read_only), fontSize = 12.sp, color = p.contentSecondary)
+            change?.let { Text(changeStateText(it.change), Modifier.padding(top = 6.dp), fontSize = 13.sp, color = if (it.change.state == ChangeState.QUEUED) p.contentSecondary else p.danger) }
+        }
+
+        val e = editable
+        when {
+            e == null -> Unit
+            e.second != null -> {
+                // Por qué no se puede editar: siempre a la vista, no un botón que no hace nada.
+                GlassCard(Modifier.padding(top = 12.dp)) {
+                    Text(
+                        str(
+                            when (e.second) {
+                                EditBlock.SERIES -> R.string.series_read_only
+                                EditBlock.READ_ONLY -> R.string.read_only_calendar
+                                EditBlock.UNRESOLVED -> R.string.unresolved_change
+                                else -> R.string.err_generic
+                            },
+                        ),
+                        fontSize = 14.sp,
+                        color = p.contentSecondary,
+                    )
+                }
+            }
+            else -> Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                GlassButton(str(R.string.edit), { onEdit(EditTarget.Existing(item.calendar, occ.uid, e.first!!)) }, Modifier.weight(1f), icon = Icons.Rounded.Edit)
+                GlassButton(
+                    str(R.string.delete),
+                    {
+                        sheet(
+                            SheetSpec(
+                                title = str(R.string.delete_title),
+                                // Siempre dice si se borra solo del celu o también del servidor.
+                                subtitle = if (item.calendar.local) str(R.string.delete_local) else str(R.string.delete_synced, item.calendar.host.orEmpty()),
+                                actions = listOf(
+                                    SheetAction(str(R.string.delete_confirm), Icons.Rounded.DeleteOutline, danger = true) {
+                                        CalendarApp.scope.launch { Events.delete(item.calendar, occ.uid, occ.summary) }
+                                        onBack()
+                                    },
+                                ),
+                            ),
+                        )
+                    },
+                    Modifier.weight(1f),
+                    icon = Icons.Rounded.DeleteOutline,
+                    danger = true,
+                )
+            }
         }
         Spacer(Modifier.height(8.dp))
     }

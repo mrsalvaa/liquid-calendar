@@ -65,7 +65,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @Composable
-fun CalendarsScreen(padding: PaddingValues, onBack: () -> Unit, onAccount: () -> Unit) {
+fun CalendarsScreen(padding: PaddingValues, onBack: () -> Unit, onAccount: () -> Unit, onChanges: () -> Unit) {
     val p = LocalGlass.current
     val scope = rememberCoroutineScope()
     val prompt = LocalPrompt.current
@@ -73,6 +73,7 @@ fun CalendarsScreen(padding: PaddingValues, onBack: () -> Unit, onAccount: () ->
     val data by produceState(Pair(emptyList<Account>(), emptyList<CalendarRow>()), version) {
         value = withContext(Dispatchers.IO) { Repo.accounts() to Repo.calendars() }
     }
+    val pendingCount by produceState(0, version) { value = withContext(Dispatchers.IO) { Repo.changes().size } }
     val (accounts, calendars) = data
     val caldav = accounts.firstOrNull { !it.isLocal }
     var syncing by remember { mutableStateOf(false) }
@@ -138,6 +139,7 @@ fun CalendarsScreen(padding: PaddingValues, onBack: () -> Unit, onAccount: () ->
             SectionLabel(str(R.string.account_on_server, caldav.username.orEmpty(), host))
             GlassCard {
                 AccountStatus(caldav, syncMessage, onAccount)
+                if (pendingCount > 0) SettingRow(str(R.string.pending_changes), subtitle = plural(R.plurals.pending_count, pendingCount), onClick = onChanges)
                 calendars.filter { it.accountId == caldav.id }.forEach { CalendarItem(it, local = false, host = host) }
             }
         }

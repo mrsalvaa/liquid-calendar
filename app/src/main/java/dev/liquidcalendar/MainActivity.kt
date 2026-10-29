@@ -79,6 +79,14 @@ import dev.liquidcalendar.ui.glass.isDarkTheme
 import dev.liquidcalendar.ui.screens.AccountScreen
 import dev.liquidcalendar.data.AgendaItem
 import dev.liquidcalendar.ui.screens.CalendarTab
+import dev.liquidcalendar.ui.screens.ChangesScreen
+import dev.liquidcalendar.ui.screens.EditTarget
+import dev.liquidcalendar.ui.screens.EventEditScreen
+import dev.liquidcalendar.ui.glass.DialogHost
+import dev.liquidcalendar.ui.glass.DialogSpec
+import dev.liquidcalendar.ui.glass.GlassIconButton
+import dev.liquidcalendar.ui.glass.LocalDialog
+import androidx.compose.material.icons.rounded.Add
 import dev.liquidcalendar.ui.screens.EventDetailScreen
 import dev.liquidcalendar.ui.screens.TAB_DAY
 import dev.liquidcalendar.ui.screens.TabContext
@@ -101,6 +109,8 @@ sealed interface Overlay {
     data object Account : Overlay
     data object Calendars : Overlay
     data class Event(val item: AgendaItem) : Overlay
+    data class Edit(val target: EditTarget) : Overlay
+    data object Changes : Overlay
 }
 
 class MainActivity : ComponentActivity() {
@@ -131,6 +141,7 @@ private fun App(animated: Boolean, weekStart: DayOfWeek) {
     val holder = rememberSaveableStateHolder()
     var sheet by remember { mutableStateOf<SheetSpec?>(null) }
     var prompt by remember { mutableStateOf<PromptSpec?>(null) }
+    var dialog by remember { mutableStateOf<DialogSpec?>(null) }
     var toast by remember { mutableStateOf<Pair<String, Long>?>(null) }
     val reduced = LocalReducedMotion.current
 
@@ -143,7 +154,7 @@ private fun App(animated: Boolean, weekStart: DayOfWeek) {
         stack.removeAt(stack.lastIndex)
         holder.removeState(key)
     }
-    BackHandler(enabled = stack.isNotEmpty() && sheet == null && prompt == null) { pop() }
+    BackHandler(enabled = stack.isNotEmpty() && sheet == null && prompt == null && dialog == null) { pop() }
     BackHandler(enabled = stack.isEmpty() && tab != TAB_MONTH) { tab = TAB_MONTH }
 
     val insets = WindowInsets.safeDrawing.asPaddingValues()
@@ -180,6 +191,7 @@ private fun App(animated: Boolean, weekStart: DayOfWeek) {
     CompositionLocalProvider(
         LocalActionSheet provides { sheet = it },
         LocalPrompt provides { prompt = it },
+        LocalDialog provides { dialog = it },
         LocalToast provides { toast = it to System.nanoTime() },
     ) {
         GlassRoot(
@@ -204,9 +216,19 @@ private fun App(animated: Boolean, weekStart: DayOfWeek) {
                         modifier = Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
                     )
                 }
+                // Nuevo evento, en el día elegido.
+                AnimatedVisibility(
+                    stack.isEmpty(),
+                    modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 24.dp, bottom = 100.dp),
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                ) {
+                    GlassIconButton(Icons.Rounded.Add, str(R.string.new_event), { push(Overlay.Edit(EditTarget.New(selected))) }, size = 58.dp, prominent = true)
+                }
                 ToastHost(toast) { toast = null }
                 ActionSheetHost(sheet) { sheet = null }
                 PromptHost(prompt) { prompt = null }
+                DialogHost(dialog) { dialog = null }
             },
         ) {
             val top = stack.lastOrNull()
@@ -254,8 +276,14 @@ private fun App(animated: Boolean, weekStart: DayOfWeek) {
                             onCalendars = { push(Overlay.Calendars) },
                         )
                         Overlay.Account -> AccountScreen(overlayPadding, ::pop)
-                        Overlay.Calendars -> CalendarsScreen(overlayPadding, ::pop, onAccount = { push(Overlay.Account) })
-                        is Overlay.Event -> EventDetailScreen(current.item, clock, overlayPadding, ::pop)
+                        Overlay.Calendars -> CalendarsScreen(overlayPadding, ::pop, onAccount = { push(Overlay.Account) }, onChanges = { push(Overlay.Changes) })
+                        is Overlay.Event -> EventDetailScreen(current.item, clock, overlayPadding, ::pop, onEdit = { push(Overlay.Edit(it)) })
+                        is Overlay.Edit -> EventEditScreen(current.target, clock, weekStart, overlayPadding, ::pop, onSaved = {
+                            // Al guardar se vuelve a la vista (el detalle abierto debajo ya no está al día).
+                            pop()
+                            if (stack.lastOrNull() is Overlay.Event) pop()
+                        })
+                        Overlay.Changes -> ChangesScreen(clock, overlayPadding, ::pop)
                     }
                 }
             }

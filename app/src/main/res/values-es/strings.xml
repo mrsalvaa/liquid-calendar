@@ -166,4 +166,60 @@
     </plurals>
     <string name="event_summary">%1$s, %2$s, %3$s</string>
     <string name="today_marker">hoy</string>
+
+    <!-- Crear y editar -->
+    <string name="new_event">Nuevo evento</string>
+    <string name="edit_event">Editar evento</string>
+    <string name="edit">Editar</string>
+    <string name="delete">Borrar</string>
+    <string name="title">Título</string>
+    <string name="starts">Empieza</string>
+    <string name="ends">Termina</string>
+    <string name="choose_date">Elegí una fecha</string>
+    <string name="choose_time">Elegí una hora</string>
+    <string name="done">Listo</string>
+    <string name="saved_in">Se guarda en</string>
+    <string name="choose_calendar">Elegí un calendario</string>
+    <string name="no_writable_calendar">No hay ningún calendario en el que puedas escribir.</string>
+    <string name="title_required">Escribí un título.</string>
+    <string name="end_before_start">El final no puede ser antes del comienzo.</string>
+    <string name="read_only_calendar">Este calendario es de solo lectura: no se pueden crear ni cambiar eventos en él.</string>
+    <string name="series_read_only">Este evento se repite. Por ahora las series son de solo lectura: editar o borrar una podría cambiar las demás repeticiones, así que todavía no se permite.</string>
+    <string name="unresolved_change">Este evento tiene un cambio que no se pudo subir. Resolvelo primero en Cambios pendientes.</string>
+    <string name="delete_title">¿Borrar este evento?</string>
+    <string name="delete_local">Se borra de este celu. Este calendario no se sincroniza con ningún servidor.</string>
+    <string name="delete_synced">Se borra de este celu y del servidor %s en la próxima sincronización.</string>
+    <string name="delete_confirm">Borrar evento</string>
+
+    <!-- Cambios pendientes -->
+    <string name="pending_changes">Cambios pendientes</string>
+    <string name="no_pending_changes">No hay cambios pendientes.</string>
+    <string name="change_create">Nuevo</string>
+    <string name="change_update">Editado</string>
+    <string name="change_delete">Borrado</string>
+    <string name="state_queued">Esperando para subirse</string>
+    <string name="state_conflict">Conflicto: también cambió en el servidor</string>
+    <string name="state_failed">Falló: %s</string>
+    <string name="discard">Descartar cambio</string>
+    <string name="discard_title">¿Descartar este cambio?</string>
+    <string name="discard_text">Tu cambio se pierde y el evento vuelve a la versión del servidor en la próxima sincronización.</string>
+    <string name="mine">En este celu</string>
+    <string name="theirs">En el servidor</string>
+    <string name="deleted_on_server">Borrado en el servidor</string>
+    <string name="deleted_here">Borrado en este celu</string>
+    <string name="keep_mine">Quedarme con la mía</string>
+    <string name="keep_theirs">Usar la del servidor</string>
+    <string name="decide_later">Decidir después</string>
+    <plurals name="pending_count">
+        <item quantity="one">%d cambio pendiente</item>
+        <item quantity="many">%d cambios pendientes</item>
+        <item quantity="other">%d cambios pendientes</item>
+    </plurals>
+
+    <!-- Sincronización -->
+    <string name="sync_interval">Sincronizar en segundo plano</string>
+    <string name="sync_manual">Solo a mano</string>
+    <string name="sync_every_min">Cada %d min</string>
+    <string name="sync_every_h">Cada %d h</string>
+    <string name="sync_interval_hint">Solo con conexión. Después de una contraseña rechazada no se reintenta nada.</string>
 </resources>

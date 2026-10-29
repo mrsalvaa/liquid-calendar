@@ -21,6 +21,7 @@ import dev.liquidcalendar.core.ServerUrl
 import dev.liquidcalendar.data.AccountState
 import dev.liquidcalendar.data.Repo
 import dev.liquidcalendar.data.Stores
+import dev.liquidcalendar.sync.SyncScheduler
 import androidx.compose.runtime.produceState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -78,6 +79,23 @@ fun SettingsScreen(padding: PaddingValues, onBack: () -> Unit, onAccount: () -> 
             ChipRow(listOf(DayOfWeek.SUNDAY.value, DayOfWeek.MONDAY.value, DayOfWeek.SATURDAY.value, 0), s.firstDayOfWeek, { v ->
                 if (v == 0) str(R.string.first_day_auto, dayName(localeStart).lowercase()) else dayName(DayOfWeek.of(v))
             }) { v -> edit { it.copy(firstDayOfWeek = v) } }
+        }
+
+        if (account != null) {
+            SectionLabel(str(R.string.sync_interval))
+            GlassCard {
+                ChipRow(SyncScheduler.INTERVALS, s.syncIntervalMinutes, { m ->
+                    when {
+                        m == 0 -> str(R.string.sync_manual)
+                        m < 60 -> str(R.string.sync_every_min, m)
+                        else -> str(R.string.sync_every_h, m / 60)
+                    }
+                }) { m ->
+                    edit { it.copy(syncIntervalMinutes = m) }
+                    SyncScheduler.schedulePeriodic(m, hasAccount = true)
+                }
+                Text(str(R.string.sync_interval_hint), fontSize = 12.sp, color = p.contentSecondary)
+            }
         }
 
         SectionLabel(str(R.string.privacy))

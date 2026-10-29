@@ -161,4 +161,59 @@
     </plurals>
     <string name="event_summary">%1$s, %2$s, %3$s</string>
     <string name="today_marker">today</string>
+
+    <!-- Crear y editar -->
+    <string name="new_event">New event</string>
+    <string name="edit_event">Edit event</string>
+    <string name="edit">Edit</string>
+    <string name="delete">Delete</string>
+    <string name="title">Title</string>
+    <string name="starts">Starts</string>
+    <string name="ends">Ends</string>
+    <string name="choose_date">Choose a date</string>
+    <string name="choose_time">Choose a time</string>
+    <string name="done">Done</string>
+    <string name="saved_in">Saved in</string>
+    <string name="choose_calendar">Choose a calendar</string>
+    <string name="no_writable_calendar">There\'s no calendar you can write to.</string>
+    <string name="title_required">Write a title.</string>
+    <string name="end_before_start">The end can\'t be before the start.</string>
+    <string name="read_only_calendar">This calendar is read-only: you can\'t create or change events in it.</string>
+    <string name="series_read_only">This event repeats. Series are read-only in this version: editing or deleting one could change the other repetitions, so it\'s not allowed yet.</string>
+    <string name="unresolved_change">This event has a change that couldn\'t be uploaded. Resolve it in Pending changes first.</string>
+    <string name="delete_title">Delete this event?</string>
+    <string name="delete_local">It\'s deleted from this phone. This calendar isn\'t synced with any server.</string>
+    <string name="delete_synced">It\'s deleted from this phone and from the server %s on the next sync.</string>
+    <string name="delete_confirm">Delete event</string>
+
+    <!-- Cambios pendientes -->
+    <string name="pending_changes">Pending changes</string>
+    <string name="no_pending_changes">No pending changes.</string>
+    <string name="change_create">New</string>
+    <string name="change_update">Edited</string>
+    <string name="change_delete">Deleted</string>
+    <string name="state_queued">Waiting to upload</string>
+    <string name="state_conflict">Conflict: changed on the server too</string>
+    <string name="state_failed">Failed: %s</string>
+    <string name="discard">Discard change</string>
+    <string name="discard_title">Discard this change?</string>
+    <string name="discard_text">Your change is lost and the event goes back to the server\'s version on the next sync.</string>
+    <string name="mine">On this phone</string>
+    <string name="theirs">On the server</string>
+    <string name="deleted_on_server">Deleted on the server</string>
+    <string name="deleted_here">Deleted on this phone</string>
+    <string name="keep_mine">Keep mine</string>
+    <string name="keep_theirs">Keep the server\'s</string>
+    <string name="decide_later">Decide later</string>
+    <plurals name="pending_count">
+        <item quantity="one">%d pending change</item>
+        <item quantity="other">%d pending changes</item>
+    </plurals>
+
+    <!-- Sincronización -->
+    <string name="sync_interval">Sync in the background</string>
+    <string name="sync_manual">Manual only</string>
+    <string name="sync_every_min">Every %d min</string>
+    <string name="sync_every_h">Every %d h</string>
+    <string name="sync_interval_hint">Only with a connection. Nothing is retried after a rejected password.</string>
 </resources>
