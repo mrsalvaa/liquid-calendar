@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
+    <string name="app_name">Calendar</string>
+
+    <!-- Pestañas -->
+    <string name="tab_month">Month</string>
+    <string name="tab_week">Week</string>
+    <string name="tab_day">Day</string>
+    <string name="tab_agenda">Agenda</string>
+
+    <!-- Comunes -->
+    <string name="back">Back</string>
+    <string name="cancel">Cancel</string>
+    <string name="settings">Settings</string>
+    <string name="today">Today</string>
+
+    <!-- Sin cuenta -->
+    <string name="no_account_title">No account yet</string>
+    <string name="no_account_subtitle">Add your CalDAV server in Settings to see your calendars.</string>
+    <string name="open_settings">Open settings</string>
+
+    <!-- Ajustes -->
+    <string name="account">Account</string>
+    <string name="caldav_server">CalDAV server</string>
+    <string name="not_configured">Not set up</string>
+    <string name="calendar_section">Calendar</string>
+    <string name="first_day">First day of the week</string>
+    <string name="first_day_auto">Phone language (%1$s)</string>
+    <string name="privacy">Privacy</string>
+    <string name="privacy_text">No ads, analytics, crash reports or telemetry. The app only connects to your server and to the subscriptions you add, always over HTTPS with certificate checks.</string>
+    <string name="about">About</string>
+    <string name="version">Version %s</string>
+    <string name="about_text">Free software under the GPL-3.0 license.</string>
+
+    <!-- Apariencia -->
+    <string name="appearance">Appearance</string>
+    <string name="theme">Theme</string>
+    <string name="theme_system">System</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="background">Background</string>
+    <string name="background_plain">Plain</string>
+    <string name="background_plain_hint">Plain background with the theme\'s blue: lighter in dark mode, deeper in light mode.</string>
+    <string name="background_moving">Moving</string>
+    <string name="background_accent">Accent color</string>
+    <string name="animated_background">Animated background</string>
+    <string name="animated_background_hint">Turn it off to save battery</string>
+    <string name="animated_background_reduced">Your phone asks for fewer animations, so the background stays still.</string>
+    <string name="tone">Shade</string>
+    <string name="tone_light">Light</string>
+    <string name="tone_medium">Medium</string>
+    <string name="tone_dark">Dark</string>
+    <string name="app_icon">App icon</string>
+    <string name="app_icon_hint">The launcher may take a few seconds to show the new icon, and you might have to add it to the home screen again.</string>
+    <string name="colors_sky_pink">Sky and pink</string>
+    <string name="colors_aurora">Aurora</string>
+    <string name="colors_sunset">Sunset</string>
+    <string name="colors_ocean">Ocean</string>
+    <string name="hue_red">Red</string>
+    <string name="hue_orange">Orange</string>
+    <string name="hue_yellow">Yellow</string>
+    <string name="hue_green">Green</string>
+    <string name="hue_mint">Mint</string>
+    <string name="hue_sky">Sky blue</string>
+    <string name="hue_blue">Blue</string>
+    <string name="hue_violet">Violet</string>
+    <string name="hue_pink">Pink</string>
+    <string name="hue_gray">Gray</string>
+</resources>

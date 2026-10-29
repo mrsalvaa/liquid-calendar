@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Calendario</string>
+
+    <!-- Pestañas -->
+    <string name="tab_month">Mes</string>
+    <string name="tab_week">Semana</string>
+    <string name="tab_day">Día</string>
+    <string name="tab_agenda">Agenda</string>
+
+    <!-- Comunes -->
+    <string name="back">Volver</string>
+    <string name="cancel">Cancelar</string>
+    <string name="settings">Ajustes</string>
+    <string name="today">Hoy</string>
+
+    <!-- Sin cuenta -->
+    <string name="no_account_title">Todavía no hay ninguna cuenta</string>
+    <string name="no_account_subtitle">Agregá tu servidor CalDAV en Ajustes para ver tus calendarios.</string>
+    <string name="open_settings">Abrir ajustes</string>
+
+    <!-- Ajustes -->
+    <string name="account">Cuenta</string>
+    <string name="caldav_server">Servidor CalDAV</string>
+    <string name="not_configured">Sin configurar</string>
+    <string name="calendar_section">Calendario</string>
+    <string name="first_day">Primer día de la semana</string>
+    <string name="first_day_auto">Según el idioma (%1$s)</string>
+    <string name="privacy">Privacidad</string>
+    <string name="privacy_text">Sin publicidad, analíticas, reportes de fallos ni telemetría. La app solo se conecta a tu servidor y a las suscripciones que agregues, siempre por HTTPS y verificando el certificado.</string>
+    <string name="about">Acerca de</string>
+    <string name="version">Versión %s</string>
+    <string name="about_text">Software libre bajo la licencia GPL-3.0.</string>
+
+    <!-- Apariencia -->
+    <string name="appearance">Apariencia</string>
+    <string name="theme">Tema</string>
+    <string name="theme_system">Sistema</string>
+    <string name="theme_light">Claro</string>
+    <string name="theme_dark">Oscuro</string>
+    <string name="background">Fondo</string>
+    <string name="background_plain">Liso</string>
+    <string name="background_plain_hint">Fondo liso con el azul del tema: más claro en oscuro, más intenso en claro.</string>
+    <string name="background_moving">En movimiento</string>
+    <string name="background_accent">Color de énfasis</string>
+    <string name="animated_background">Fondo animado</string>
+    <string name="animated_background_hint">Desactivalo para ahorrar batería</string>
+    <string name="animated_background_reduced">Tu celu pide menos animaciones, así que el fondo queda quieto.</string>
+    <string name="tone">Tono</string>
+    <string name="tone_light">Claro</string>
+    <string name="tone_medium">Medio</string>
+    <string name="tone_dark">Oscuro</string>
+    <string name="app_icon">Ícono de la app</string>
+    <string name="app_icon_hint">El launcher puede tardar unos segundos en mostrar el ícono nuevo, y capaz tenés que volver a ponerlo en la pantalla de inicio.</string>
+    <string name="colors_sky_pink">Celeste y rosa</string>
+    <string name="colors_aurora">Aurora</string>
+    <string name="colors_sunset">Atardecer</string>
+    <string name="colors_ocean">Océano</string>
+    <string name="hue_red">Rojo</string>
+    <string name="hue_orange">Naranja</string>
+    <string name="hue_yellow">Amarillo</string>
+    <string name="hue_green">Verde</string>
+    <string name="hue_mint">Menta</string>
+    <string name="hue_sky">Celeste</string>
+    <string name="hue_blue">Azul</string>
+    <string name="hue_violet">Violeta</string>
+    <string name="hue_pink">Rosa</string>
+    <string name="hue_gray">Gris</string>
+</resources>
