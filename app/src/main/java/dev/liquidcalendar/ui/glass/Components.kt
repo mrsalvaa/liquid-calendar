@@ -74,6 +74,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
@@ -288,7 +290,10 @@ fun GlassIconButton(
 ) {
     val p = LocalGlass.current
     GlassSurface(
-        modifier.size(size).graphicsLayer { alpha = if (enabled) 1f else 0.4f },
+        modifier
+            .size(size)
+            .graphicsLayer { alpha = if (enabled) 1f else 0.4f }
+            .semantics { if (!enabled) disabled() },
         shape = CircleShape,
         strong = true,
         tint = if (prominent) p.accent.copy(alpha = if (p.dark) 0.6f else 0.92f) else null,
@@ -325,7 +330,13 @@ fun GlassButton(
         else -> p.content
     }
     GlassSurface(
-        modifier.heightIn(min = 54.dp).graphicsLayer { alpha = if (enabled) 1f else 0.4f },
+        modifier
+            .heightIn(min = 54.dp)
+            .graphicsLayer { alpha = if (enabled) 1f else 0.4f }
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                if (!enabled) disabled()
+            },
         shape = CircleShape,
         strong = true,
         tint = tint,
@@ -436,9 +447,6 @@ fun GlassTextField(
     val style = textStyle ?: TextStyle(fontSize = 17.sp)
     GlassSurface(modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), frost = 12.dp, refraction = false) {
         Box(Modifier.padding(horizontal = 18.dp, vertical = 15.dp)) {
-            if (value.isEmpty()) {
-                Text(placeholder, style = style, color = p.contentSecondary)
-            }
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
@@ -452,6 +460,14 @@ fun GlassTextField(
                 modifier = Modifier
                     .fillMaxWidth()
                     .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
+                // El texto de ayuda va dentro del campo (como en los de Material): así forma parte
+                // de su nodo de accesibilidad y TalkBack dice qué campo es.
+                decorationBox = { inner ->
+                    Box {
+                        if (value.isEmpty()) Text(placeholder, style = style, color = p.contentSecondary)
+                        inner()
+                    }
+                },
             )
         }
     }
