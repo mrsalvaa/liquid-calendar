@@ -12,7 +12,7 @@ object AppLog {
     private const val TAG = "LiquidCalendar"
 
     fun event(name: String, error: DavException? = null) {
-        val text = if (error == null) name else "$name: ${error.javaClass.simpleName} (${error.message})"
+        val text = if (error == null) name else "$name: ${error.code} (${error.message})"
         Log.i(TAG, text)
     }
 }

@@ -164,16 +164,16 @@ object SyncEngine {
                 when (val decision = policy.decide(e, account.attempts)) {
                     RetryDecision.NeedsPassword -> {
                         recordLoginFailure()
-                        Repo.updateSyncState(account.id, AccountState.NEEDS_PASSWORD, e.javaClass.simpleName, null, 0)
+                        Repo.updateSyncState(account.id, AccountState.NEEDS_PASSWORD, e.code, null, 0)
                         SyncResult.NeedsPassword
                     }
                     is RetryDecision.RetryIn -> {
                         val until = Instant.now().plus(decision.delay)
-                        Repo.updateSyncState(account.id, AccountState.ERROR, e.javaClass.simpleName, until.toEpochMilli(), account.attempts + 1)
+                        Repo.updateSyncState(account.id, AccountState.ERROR, e.code, until.toEpochMilli(), account.attempts + 1)
                         SyncResult.Wait(until)
                     }
                     is RetryDecision.GiveUp -> {
-                        Repo.updateSyncState(account.id, AccountState.ERROR, e.javaClass.simpleName, null, 0)
+                        Repo.updateSyncState(account.id, AccountState.ERROR, e.code, null, 0)
                         SyncResult.Failed(e)
                     }
                 }
