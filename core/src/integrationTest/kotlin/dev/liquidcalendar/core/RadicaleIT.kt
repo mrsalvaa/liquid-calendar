@@ -8,6 +8,11 @@ import dev.liquidcalendar.core.ics.DraftTime
 import dev.liquidcalendar.core.ics.EventDraft
 import dev.liquidcalendar.core.ics.Ics
 import dev.liquidcalendar.core.ics.IcsWriter
+import dev.liquidcalendar.core.sync.ChangeKind
+import dev.liquidcalendar.core.sync.ChangeState
+import dev.liquidcalendar.core.sync.ChangeStore
+import dev.liquidcalendar.core.sync.PendingChange
+import dev.liquidcalendar.core.sync.Pusher
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -165,6 +170,75 @@ class RadicaleIT {
             assertTrue(m in back.replace("\r\n ", ""), "se perdió $m")
         }
         assertEquals("Otra dirección", Ics.parseResource(back).components.single().info.location)
+    }
+
+    /** Cola en memoria para las pruebas (en la app es SQLite). */
+    private class Queue(changes: List<PendingChange>) : ChangeStore {
+        val all = changes.toMutableList()
+        val etags = mutableMapOf<String, String?>()
+        override fun queued() = all.filter { it.state == ChangeState.QUEUED }.sortedBy { it.id }
+        override fun done(change: PendingChange, etag: String?) { all.removeAll { it.id == change.id }; etags[change.uid] = etag }
+        override fun conflict(change: PendingChange, serverIcs: String?, serverEtag: String?) {
+            all[all.indexOfFirst { it.id == change.id }] = change.copy(state = ChangeState.CONFLICT, serverIcs = serverIcs, serverEtag = serverEtag)
+        }
+        override fun failed(change: PendingChange, error: DavException) {
+            all[all.indexOfFirst { it.id == change.id }] = change.copy(state = ChangeState.FAILED, error = error.code)
+        }
+    }
+
+    @Test
+    fun pendingQueueCreatesEditsDeletesAndDetectsConflicts() {
+        val dav = client
+        val a = IcsWriter.newUid()
+        val b = IcsWriter.newUid()
+        val icsA = IcsWriter.create(a, draft("A"))
+        val icsB = IcsWriter.create(b, draft("B"))
+        val q = Queue(
+            listOf(
+                PendingChange(1, calendarUrl, a, ChangeKind.CREATE, "${calendarUrl}$a.ics", icsA, null),
+                PendingChange(2, calendarUrl, b, ChangeKind.CREATE, "${calendarUrl}$b.ics", icsB, null),
+            ),
+        )
+        assertEquals(2, Pusher(dav).push(q))
+        val etagA = q.etags[a]!!
+        val etagB = q.etags[b]!!
+
+        // Otro cliente cambia B en el servidor mientras yo lo edito en el celu.
+        val beforeB = IcsWriter.draftOf(Ics.parseResource(icsB), b, java.time.ZoneOffset.UTC)!!
+        val theirs = IcsWriter.patch(icsB, b, beforeB, beforeB.copy(summary = "B (desde otro cliente)"))
+        rawRequest("PUT", "${calendarUrl}$b.ics", theirs, "text/calendar; charset=utf-8")
+        val mine = IcsWriter.patch(icsB, b, beforeB, beforeB.copy(summary = "B (desde el celu)"))
+
+        val q2 = Queue(
+            listOf(
+                PendingChange(3, calendarUrl, b, ChangeKind.UPDATE, "${calendarUrl}$b.ics", mine, etagB),
+                PendingChange(4, calendarUrl, a, ChangeKind.DELETE, "${calendarUrl}$a.ics", null, etagA),
+            ),
+        )
+        assertEquals(1, Pusher(dav).push(q2))
+        val conflict = q2.all.single()
+        assertEquals(ChangeState.CONFLICT, conflict.state)
+        // Las dos versiones disponibles, y el servidor sin pisar.
+        assertEquals("B (desde otro cliente)", Ics.parseResource(conflict.serverIcs!!).components.single().info.summary)
+        assertEquals("B (desde el celu)", Ics.parseResource(conflict.ics!!).components.single().info.summary)
+        assertEquals("B (desde otro cliente)", Ics.parseResource(String(dav.get(dav.url("${calendarUrl}$b.ics")).body)).components.single().info.summary)
+        // A se borró.
+        assertFailsWith<DavException.NotFound> { dav.get(dav.url("${calendarUrl}$a.ics")) }
+
+        // Elegir "la mía": se reintenta con el ETag del servidor que el usuario vio.
+        val q3 = Queue(listOf(conflict.copy(state = ChangeState.QUEUED, baseEtag = conflict.serverEtag)))
+        assertEquals(1, Pusher(dav).push(q3))
+        assertEquals("B (desde el celu)", Ics.parseResource(String(dav.get(dav.url("${calendarUrl}$b.ics")).body)).components.single().info.summary)
+    }
+
+    @Test
+    fun wrongPasswordStopsTheQueueWithoutTouchingIt() {
+        val bad = DavClient(server, Credentials(user, "contraseña-incorrecta"))
+        val u = IcsWriter.newUid()
+        val q = Queue(listOf(PendingChange(1, calendarUrl, u, ChangeKind.CREATE, "${calendarUrl}$u.ics", IcsWriter.create(u, draft("x")), null)))
+        assertFailsWith<DavException.Unauthorized> { Pusher(bad).push(q) }
+        assertEquals(1, q.queued().size)
+        assertFailsWith<DavException.NotFound> { client.get(client.url("${calendarUrl}$u.ics")) }
     }
 
     @Test
