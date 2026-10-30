@@ -13,7 +13,7 @@ class DavExceptionTest {
             DavException.PreconditionFailed(), DavException.RetryLater(503, null), DavException.ServerError(500),
             DavException.UnexpectedStatus(418), DavException.RedirectRefused(), DavException.TooManyRedirects(),
             DavException.Network("Timeout"), DavException.Tls("SSLHandshakeException"), DavException.TooLarge(),
-            DavException.BadResponse("x"),
+            DavException.BadResponse("x"), DavException.MkcalendarUnsupported(405),
         )
         all.forEach { assertEquals(it.javaClass.simpleName, it.code) }
         assertEquals(all.size, all.map { it.code }.toSet().size)

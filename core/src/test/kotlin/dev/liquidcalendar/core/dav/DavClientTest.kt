@@ -159,6 +159,33 @@ class DavClientTest {
     }
 
     @Test
+    fun serversWithoutMkcalendarGiveAClearError() {
+        for (code in listOf(405, 501, 403)) {
+            server.enqueue(MockResponse.Builder().code(code).build())
+            val e = assertFailsWith<DavException.MkcalendarUnsupported> { CalDav(client()).mkcalendar(server.url("/u/").toString(), "x", "X", 0xFF000000.toInt(), setOf("VEVENT")) }
+            assertEquals(code, e.status)
+        }
+    }
+
+    @Test
+    fun rejectedProppatchIsAnError() {
+        server.enqueue(
+            multistatus(
+                """<response><href>/u/c/</href>
+                <propstat><prop><displayname/></prop><status>HTTP/1.1 200 OK</status></propstat>
+                <propstat><prop><calendar-color xmlns="http://apple.com/ns/ical/"/></prop><status>HTTP/1.1 403 Forbidden</status></propstat>
+                </response>""",
+            ),
+        )
+        assertFailsWith<DavException.UnexpectedStatus> { CalDav(client()).proppatch(server.url("/u/c/").toString(), "Nuevo", 0xFF112233.toInt()) }
+    }
+
+    @Test
+    fun colorsRoundTrip() {
+        for (c in listOf(0xFF14B8A6.toInt(), 0xFFEF4444.toInt(), 0x80123456.toInt())) assertEquals(c, CalDav.parseColor(CalDav.colorHex(c)))
+    }
+
+    @Test
     fun keepsOnlySuccessfulProps() {
         server.enqueue(
             multistatus(

@@ -59,8 +59,16 @@ class DavClient(
     fun report(url: HttpUrl, depth: Int, body: String): List<DavResponse> = multistatus(send("REPORT", url, body, depth))
 
     /** Ejecuta una petición siguiendo solo redirecciones al mismo origen; devuelve el cuerpo. */
-    fun send(method: String, url: HttpUrl, body: String?, depth: Int? = null): ByteArray =
-        execute(method, url, body, XML, emptyMap(), depth, followRedirects = true).body
+    fun send(method: String, url: HttpUrl, body: String?, depth: Int? = null, followRedirects: Boolean = true): ByteArray =
+        execute(method, url, body, XML, emptyMap(), depth, followRedirects).body
+
+    /** PROPPATCH; devuelve el multistatus (cada propiedad con su estado). */
+    fun proppatch(url: HttpUrl, body: String): List<DavResponse> = multistatusAll(send("PROPPATCH", url, body, followRedirects = false))
+
+    /** Borra una colección entera (un calendario). Solo por una acción explícita del usuario. */
+    fun deleteCollection(url: HttpUrl) {
+        execute("DELETE", url, null, null, emptyMap(), null, followRedirects = false)
+    }
 
     /** Resultado de una petición: cuerpo y ETag (si el servidor lo mandó). */
     class Result(val body: ByteArray, val etag: String?)
@@ -153,6 +161,21 @@ class DavClient(
             return source.buffer.readByteArray()
         } catch (e: IOException) {
             throw DavException.Network(e.javaClass.simpleName, e)
+        }
+    }
+
+    /** Como multistatus, pero con el estado de cada propiedad (incluidas las rechazadas). */
+    private fun multistatusAll(bytes: ByteArray): List<DavResponse> {
+        val root = try {
+            SafeXml.parse(bytes)
+        } catch (e: XmlException) {
+            throw DavException.BadResponse(e.message ?: "XML")
+        }
+        if (root.name != MULTISTATUS) throw DavException.BadResponse("no es multistatus")
+        return root.all(RESPONSE).mapNotNull { response ->
+            val href = response.child(HREF)?.text?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            val failed = response.all(PROPSTAT).any { (statusCode(it.child(STATUS)?.text) ?: 0) !in 200..299 }
+            DavResponse(href, if (failed) 400 else 200, emptyMap())
         }
     }
 

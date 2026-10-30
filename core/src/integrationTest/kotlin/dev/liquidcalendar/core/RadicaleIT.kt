@@ -297,6 +297,27 @@ class RadicaleIT {
     }
 
     @Test
+    fun createRenameRecolorAndDeleteCalendars() {
+        val dav = CalDav(client)
+        val home = "${baseUrl}$user/"
+        val slug = "nuevo-" + UUID.randomUUID().toString().take(8)
+        val url = dav.mkcalendar(home, slug, "Gimnasio ñ", 0xFF14B8A6.toInt(), setOf("VEVENT"))
+        assertEquals("$home$slug/", url)
+        val created = dav.listCalendars(home).single { it.url == url }
+        assertEquals("Gimnasio ñ", created.name)
+        assertEquals(0xFF14B8A6.toInt(), created.color)
+        // Renombrar y recolorear no cambia el href: el calendario sigue siendo el mismo.
+        dav.proppatch(url, "Gimnasio y natación", 0xFFEF4444.toInt())
+        val renamed = dav.listCalendars(home).single { it.url == url }
+        assertEquals("Gimnasio y natación", renamed.name)
+        assertEquals(0xFFEF4444.toInt(), renamed.color)
+        assertEquals(1, dav.listCalendars(home).count { it.url == url })
+        // Borrar: desaparece del servidor.
+        dav.deleteCalendar(url)
+        assertTrue(dav.listCalendars(home).none { it.url == url })
+    }
+
+    @Test
     fun wrongPasswordStopsTheQueueWithoutTouchingIt() {
         val bad = DavClient(server, Credentials(user, "contraseña-incorrecta"))
         val u = IcsWriter.newUid()

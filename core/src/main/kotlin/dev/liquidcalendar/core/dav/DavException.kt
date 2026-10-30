@@ -49,6 +49,9 @@ sealed class DavException(
 
     class TooLarge : DavException("TooLarge", "Respuesta demasiado grande")
 
+    /** El servidor no permite crear calendarios (MKCALENDAR) desde un cliente. */
+    class MkcalendarUnsupported(val status: Int) : DavException("MkcalendarUnsupported", "MKCALENDAR no soportado ($status)")
+
     /** XML o datos que no se pueden interpretar. */
     class BadResponse(reason: String) : DavException("BadResponse", "Respuesta inválida: $reason")
 }
