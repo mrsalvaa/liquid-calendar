@@ -15,23 +15,19 @@ small corners and outline icons.
 No ads, no telemetry and no Google services. It only talks to your server and to the
 subscriptions you add yourself. Licensed under GPL-3.0.
 
+<p align="center"><b>Liquid Glass</b></p>
 <p align="center">
   <img src="docs/screenshots/mes.png" width="200" alt="Month">
   <img src="docs/screenshots/semana.png" width="200" alt="Week">
+  <img src="docs/screenshots/dia.png" width="200" alt="Day">
   <img src="docs/screenshots/agenda.png" width="200" alt="Agenda">
-  <img src="docs/screenshots/detalle-serie.png" width="200" alt="Event in a series">
 </p>
+<p align="center"><b>Solid</b></p>
 <p align="center">
-  <img src="docs/screenshots/resumen-serie.png" width="200" alt="Summary before changing a series">
-  <img src="docs/screenshots/calendarios.png" width="200" alt="Calendars">
-  <img src="docs/screenshots/ajustes-recordatorios.png" width="200" alt="Reminder settings">
-  <img src="docs/screenshots/calendario-faltante.png" width="200" alt="Calendar deleted on the server">
-</p>
-<p align="center">
-  <img src="docs/screenshots/borrar-calendario.png" width="200" alt="Deleting a calendar">
-  <img src="docs/screenshots/suscripcion.png" width="200" alt="Subscription">
-  <img src="docs/screenshots/importar.png" width="200" alt="Import">
-  <img src="docs/screenshots/widget.png" width="200" alt="Agenda widget">
+  <img src="docs/screenshots/mes-solido.png" width="200" alt="Month">
+  <img src="docs/screenshots/semana-solido.png" width="200" alt="Week">
+  <img src="docs/screenshots/dia-solido.png" width="200" alt="Day">
+  <img src="docs/screenshots/agenda-solido.png" width="200" alt="Agenda">
 </p>
 
 Screenshots show made-up test data (`scripts/demo-data.py`) on a local Radicale.

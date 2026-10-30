@@ -15,23 +15,19 @@ tarjetas opacas, esquinas chicas e íconos de líneas.
 Sin publicidad, sin telemetría y sin servicios de Google. Solo se conecta a tu servidor y a las
 suscripciones que agregues vos. Licencia GPL-3.0.
 
+<p align="center"><b>Liquid Glass</b></p>
 <p align="center">
   <img src="docs/screenshots/mes.png" width="200" alt="Mes">
   <img src="docs/screenshots/semana.png" width="200" alt="Semana">
+  <img src="docs/screenshots/dia.png" width="200" alt="Día">
   <img src="docs/screenshots/agenda.png" width="200" alt="Agenda">
-  <img src="docs/screenshots/detalle-serie.png" width="200" alt="Detalle de una serie">
 </p>
+<p align="center"><b>Sólido</b></p>
 <p align="center">
-  <img src="docs/screenshots/resumen-serie.png" width="200" alt="Resumen antes de cambiar una serie">
-  <img src="docs/screenshots/calendarios.png" width="200" alt="Calendarios">
-  <img src="docs/screenshots/ajustes-recordatorios.png" width="200" alt="Ajustes de recordatorios">
-  <img src="docs/screenshots/calendario-faltante.png" width="200" alt="Calendario borrado en el servidor">
-</p>
-<p align="center">
-  <img src="docs/screenshots/borrar-calendario.png" width="200" alt="Borrar un calendario">
-  <img src="docs/screenshots/suscripcion.png" width="200" alt="Suscripción">
-  <img src="docs/screenshots/importar.png" width="200" alt="Importar">
-  <img src="docs/screenshots/widget.png" width="200" alt="Widget de agenda">
+  <img src="docs/screenshots/mes-solido.png" width="200" alt="Mes">
+  <img src="docs/screenshots/semana-solido.png" width="200" alt="Semana">
+  <img src="docs/screenshots/dia-solido.png" width="200" alt="Día">
+  <img src="docs/screenshots/agenda-solido.png" width="200" alt="Agenda">
 </p>
 
 Las capturas son de datos de prueba inventados (`scripts/demo-data.py`) en un Radicale local.

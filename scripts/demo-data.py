@@ -86,3 +86,18 @@ event("trabajo", "almuerzo", [
     f"DTSTART;{local(monday + dt.timedelta(days=3), 13)}", f"DTEND;{local(monday + dt.timedelta(days=3), 14)}",
     "SUMMARY:Almuerzo con Laura", "LOCATION:Café del centro", "END:VEVENT",
 ])
+
+# Un día cargado (martes) y un calendario más, para las capturas de las pestañas.
+calendar("personal", "Personal", "#22C55EFF")
+tuesday = monday + dt.timedelta(days=1)
+for slug, uid, day, start, end, title in (
+    ("personal", "gimnasio", tuesday, (7, 30), (8, 30), "Gimnasio"),
+    ("trabajo", "revision", tuesday, (11, 30), (12, 30), "Revisión del proyecto"),
+    ("personal", "dentista", tuesday, (16, 0), (17, 0), "Dentista"),
+    ("personal", "cena", tuesday, (20, 30), (22, 0), "Cena con amigos"),
+    ("personal", "cumple", monday + dt.timedelta(days=5), (19, 0), (21, 0), "Cumpleaños de Sofi"),
+):
+    event(slug, uid, [
+        "BEGIN:VEVENT", f"UID:{uid}@datos-de-prueba", stamp,
+        f"DTSTART;{local(day, *start)}", f"DTEND;{local(day, *end)}", f"SUMMARY:{title}", "END:VEVENT",
+    ])
