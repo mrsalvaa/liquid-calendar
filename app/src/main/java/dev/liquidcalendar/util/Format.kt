@@ -31,8 +31,12 @@ fun longDate(date: LocalDate, locale: Locale = Locale.getDefault()): String =
 /** "29/10". */
 fun shortDate(date: LocalDate): String = DateTimeFormatter.ofPattern("dd/MM").format(date)
 
-/** "26/10 – 01/11/2026": la semana que empieza en [start]. */
-fun weekTitle(start: LocalDate): String = "${shortDate(start)} – ${numericDate(start.plusDays(6))}"
+/** "26/10 – 01/11": la semana que empieza en [start], sin el año. */
+fun weekTitle(start: LocalDate): String = "${shortDate(start)} – ${shortDate(start.plusDays(6))}"
+
+/** "Viernes 30/10": título de la pestaña Día, sin el año. */
+fun dayTitle(date: LocalDate, locale: Locale = Locale.getDefault()): String =
+    "${dayName(date.dayOfWeek, locale)} ${shortDate(date)}"
 
 /** Inicial del día para las cabeceras ("L", "M"...). */
 fun dayInitial(day: DayOfWeek, locale: Locale = Locale.getDefault()): String =

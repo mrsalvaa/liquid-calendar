@@ -2,6 +2,16 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## Sin publicar
+
+### Mejoras
+- Pellizcar en semana y día ya no salta cuando los dedos se cruzan: se queda en el tamaño mínimo. La altura sigue la distancia entre los dedos desde el comienzo del gesto.
+- Con las horas contraídas, la columna muestra una hora por medio (00, 02, 04…); las demás aparecen al agrandar.
+- Los números de las horas quedan centrados sobre su línea.
+
+### Cambios
+- Los títulos de semana y día ya no muestran el año: "26/10 – 01/11" y "Viernes 30/10". El de mes no cambia.
+
 ## 1.1.0
 
 ### Novedades

@@ -8,9 +8,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerId
 import androidx.compose.ui.input.pointer.pointerInput
 import dev.liquidcalendar.data.Stores
 import kotlin.math.abs
+import kotlin.math.sign
 import kotlin.math.roundToInt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -26,6 +28,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -69,6 +72,15 @@ import java.time.ZoneId
 /** Altura de la hora: entre "todo el día entra en pantalla" y esta. */
 private val MAX_HOUR = 140.dp
 private val GUTTER = 44.dp
+
+/** Con las horas más bajas que esto, la columna muestra una hora sí y una no (00, 02, 04…). */
+private val COMPACT_HOUR = 44.dp
+
+/** Alto de la caja de cada número de hora (centrada sobre la línea). */
+private val LABEL = 16.dp
+
+/** Separación mínima (px) entre los dedos al empezar, para que el pellizco sea estable. */
+private const val PINCH_MIN_GAP = 48f
 
 /** Semana (7 días) o día (1): franja de todo el día arriba y horas debajo. */
 @Composable
@@ -153,26 +165,44 @@ private fun HoursGrid(days: List<LocalDate>, perDay: Map<LocalDate, List<AgendaI
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                     var pinched = false
+                    // Los dos dedos del pellizco y cómo empezó: la altura sale de la separación
+                    // actual comparada con la del comienzo (no paso a paso), así no se acumulan
+                    // saltos. La separación lleva signo: si los dedos se cruzan, queda en el mínimo
+                    // en vez de volver a agrandarse.
+                    var ids: Pair<PointerId, PointerId>? = null
+                    var startGap = 0f
+                    var startHour = 0f
                     do {
                         val event = awaitPointerEvent(PointerEventPass.Initial)
                         val pressed = event.changes.filter { it.pressed }
                         if (pressed.size >= 2) {
-                            val a = pressed[0]
-                            val b = pressed[1]
-                            val before = abs(a.previousPosition.y - b.previousPosition.y)
-                            val now = abs(a.position.y - b.position.y)
-                            if (before > 24f && now > 24f) {
+                            val current = ids
+                            val a = current?.let { c -> pressed.firstOrNull { it.id == c.first } }
+                            val b = current?.let { c -> pressed.firstOrNull { it.id == c.second } }
+                            if (a == null || b == null) {
+                                // Empieza (o cambió un dedo): se toma esta posición como base.
+                                val (p0, p1) = pressed[0] to pressed[1]
+                                ids = p0.id to p1.id
+                                startGap = p0.position.y - p1.position.y
+                                startHour = hourPx.coerceIn(minPx, maxPx)
+                            } else if (abs(startGap) > PINCH_MIN_GAP) {
+                                // Separación en la dirección del comienzo (negativa si se cruzaron).
+                                val gap = (a.position.y - b.position.y) * sign(startGap)
                                 val old = hourPx.coerceIn(minPx, maxPx)
-                                val new = (old * now / before).coerceIn(minPx, maxPx)
-                                // Lo que está entre los dedos queda en su lugar.
-                                val focus = (a.position.y + b.position.y) / 2f
-                                val target = (scroll.value + focus) * new / old - focus
-                                hourPx = new
-                                scroll.dispatchRawDelta(target - scroll.value)
-                                pinched = true
+                                val new = (startHour * gap / abs(startGap)).coerceIn(minPx, maxPx)
+                                if (new != old) {
+                                    // Lo que está entre los dedos queda en su lugar.
+                                    val focus = (a.position.y + b.position.y) / 2f
+                                    val target = (scroll.value + focus) * new / old - focus
+                                    hourPx = new
+                                    scroll.dispatchRawDelta(target - scroll.value)
+                                    pinched = true
+                                }
                             }
                             // Con dos dedos no se desplaza la grilla.
                             event.changes.forEach { it.consume() }
+                        } else {
+                            ids = null
                         }
                     } while (event.changes.any { it.pressed })
                     if (pinched) {
@@ -206,18 +236,30 @@ private fun HoursGridContent(
     }
     Box(Modifier.fillMaxSize().then(gesture(scroll)).verticalScroll(scroll)) {
         val line = p.content.copy(alpha = if (p.dark) 0.08f else 0.1f)
+        // Contraído: hora por medio en la columna, y las líneas de las horas impares más tenues.
+        val compact = HOUR < COMPACT_HOUR
+        val faint = line.copy(alpha = line.alpha / 2f)
         Canvas(Modifier.fillMaxWidth().height(HOUR * 24)) {
             for (h in 0..24) {
                 val y = HOUR.toPx() * h
-                drawLine(line, Offset(GUTTER.toPx(), y), Offset(size.width, y), strokeWidth = 1f)
+                drawLine(if (compact && h % 2 == 1) faint else line, Offset(GUTTER.toPx(), y), Offset(size.width, y), strokeWidth = 1f)
             }
         }
-        Column(Modifier.width(GUTTER).clearAndSetSemantics { }) {
+        // Cada número en una caja de LABEL de alto con el texto centrado, y la caja centrada en la
+        // línea de su hora. La de las 00 va justo debajo de la línea de arriba, para que no se corte.
+        Box(Modifier.width(GUTTER).height(HOUR * 24).clearAndSetSemantics { }) {
             (0 until 24).forEach { h ->
+                if (compact && h % 2 == 1) return@forEach
                 Text(
-                    if (h == 0) "" else hourLabel(h),
-                    Modifier.height(HOUR).offset(y = (-7).dp).padding(end = 6.dp).fillMaxWidth(),
+                    hourLabel(h),
+                    Modifier
+                        .offset(y = if (h == 0) 2.dp else HOUR * h - LABEL / 2)
+                        .height(LABEL)
+                        .padding(end = 6.dp)
+                        .fillMaxWidth()
+                        .wrapContentHeight(Alignment.CenterVertically),
                     fontSize = 10.sp,
+                    lineHeight = 12.sp,
                     color = p.contentSecondary,
                     textAlign = TextAlign.End,
                 )

@@ -20,6 +20,7 @@ import dev.liquidcalendar.ui.screens.views.TimelineView
 import dev.liquidcalendar.util.longDate
 import dev.liquidcalendar.util.monthTitle
 import dev.liquidcalendar.util.str
+import dev.liquidcalendar.util.dayTitle
 import dev.liquidcalendar.util.weekTitle
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -86,7 +87,7 @@ fun CalendarTab(tab: Int, ctx: TabContext) {
             }
             TAB_DAY -> {
                 PeriodHeader(
-                    longDate(ctx.selected), if (ctx.selected == ctx.clock.today) str(R.string.today) else null,
+                    dayTitle(ctx.selected), if (ctx.selected == ctx.clock.today) str(R.string.today) else null,
                     str(R.string.prev_day), str(R.string.next_day),
                     showToday = ctx.selected != ctx.clock.today,
                     onPrev = { ctx.onSelect(ctx.selected.minusDays(1)) },

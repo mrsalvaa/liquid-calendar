@@ -2,6 +2,16 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
+## Unreleased
+
+### Improved
+- Pinching in week and day views no longer jumps when the fingers cross: it stays at the smallest size. The height follows the distance between your fingers since the start of the gesture.
+- When the hours are compressed, the hour column shows every other hour (00, 02, 04…); the rest appear as you expand.
+- Hour numbers are centred on their line.
+
+### Changed
+- Week and day titles no longer show the year: "26/10 – 01/11" and "Friday 30/10". The month title is unchanged.
+
 ## 1.1.0
 
 ### New
