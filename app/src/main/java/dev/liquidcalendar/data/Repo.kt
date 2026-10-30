@@ -41,8 +41,16 @@ data class Account(
     /** No intentar antes de este instante (Retry-After o espera exponencial). */
     val retryAt: Long?,
     val attempts: Int,
+    // Solo suscripciones:
+    val feedEtag: String? = null,
+    val feedLastModified: String? = null,
+    /** Cada cuánto actualizar (minutos); 0 = solo a mano. */
+    val refreshMinutes: Int? = null,
+    /** Hosts a los que el usuario aceptó que el feed redirija. */
+    val acceptedHosts: Set<String> = emptySet(),
 ) {
     val isLocal: Boolean get() = kind == Db.KIND_LOCAL
+    val isSubscription: Boolean get() = kind == Db.KIND_SUBSCRIPTION
 }
 
 /** Lo que se muestra de un calendario en cualquier vista: siempre se sabe si es local o de un servidor. */
@@ -50,10 +58,14 @@ data class CalendarInfo(
     val id: Long,
     val name: String,
     val color: Int,
-    /** true = "En este celu" (nunca se sube); false = sincronizado con [host]. */
+    /** true = "En este dispositivo" (nunca se sube); false = sincronizado con [host] o suscripción. */
     val local: Boolean,
     val host: String?,
     val readOnly: Boolean,
+    /** Suscripción webcal/ICS: solo lectura, solo en el dispositivo. */
+    val subscription: Boolean = false,
+    /** Ya no está en el servidor: el usuario decide si conservarlo, exportarlo o descartarlo. */
+    val missing: Boolean = false,
 )
 
 data class CalendarRow(
@@ -65,6 +77,7 @@ data class CalendarRow(
     val visible: Boolean,
     val readOnly: Boolean,
     val events: Int,
+    val missing: Boolean = false,
 )
 
 /** Acceso a la caché. [version] cambia con cada escritura, para que las pantallas se refresquen. */
@@ -89,7 +102,9 @@ object Repo {
 
     fun account(id: Long): Account? = accounts().firstOrNull { it.id == id }
 
-    fun caldavAccount(): Account? = accounts().firstOrNull { !it.isLocal }
+    fun caldavAccount(): Account? = accounts().firstOrNull { it.kind == Db.KIND_CALDAV }
+
+    fun subscriptions(): List<Account> = accounts().filter { it.isSubscription }
 
     /** Crea o actualiza la cuenta CalDAV. Volver a guardarla la deja lista para sincronizar. */
     fun saveCaldavAccount(id: Long?, serverUrl: String, username: String, principalUrl: String, homeUrl: String): Long {
@@ -181,11 +196,15 @@ object Repo {
                     values.put("url", r.url)
                     w.insertOrThrow("calendar", null, values)
                 } else {
+                    values.put("missing", 0)
                     w.update("calendar", values, "id = ?", arrayOf(current.id.toString()))
                 }
             }
             val keep = remote.map { it.url }.toSet()
-            existing.values.filter { it.url !in keep }.forEach { w.delete("calendar", "id = ?", arrayOf(it.id.toString())) }
+            // Lo que ya no está en el servidor no se borra: queda marcado y el usuario decide.
+            existing.values.filter { it.url !in keep }.forEach {
+                w.update("calendar", ContentValues().apply { put("missing", 1) }, "id = ?", arrayOf(it.id.toString()))
+            }
         }
         changed()
     }
@@ -264,10 +283,130 @@ object Repo {
         val hosts = accounts().associate { a ->
             a.id to a.serverUrl?.let { (dev.liquidcalendar.core.ServerUrl.parse(it, allowHttp = true) as? dev.liquidcalendar.core.ServerUrl.Result.Ok)?.url?.host }
         }
-        val locals = accounts().filter { it.isLocal }.map { it.id }.toSet()
+        val all = accounts()
+        val locals = all.filter { it.isLocal }.map { it.id }.toSet()
+        val subs = all.filter { it.isSubscription }.associateBy { it.id }
         return calendars().associate { c ->
-            c.id to CalendarInfo(c.id, c.name, c.color, local = c.accountId in locals, host = hosts[c.accountId], readOnly = c.readOnly)
+            val sub = subs[c.accountId]
+            val host = if (sub != null) sub.serverUrl?.let { (dev.liquidcalendar.core.feed.FeedUrl.parse(it) as? dev.liquidcalendar.core.feed.FeedUrl.Result.Ok)?.url?.host } else hosts[c.accountId]
+            c.id to CalendarInfo(c.id, c.name, c.color, local = c.accountId in locals, host = host, readOnly = c.readOnly || sub != null, subscription = sub != null, missing = c.missing)
         }
+    }
+
+    // --- Calendarios: crear en el servidor, editar, borrar, faltantes ---
+
+    fun addRemoteCalendar(accountId: Long, url: String, name: String, color: Int): Long {
+        val id = db.writableDatabase.insertOrThrow("calendar", null, ContentValues().apply {
+            put("account_id", accountId)
+            put("url", url)
+            put("name", name)
+            put("color", color)
+        })
+        changed()
+        return id
+    }
+
+    fun updateCalendar(calendarId: Long, name: String, color: Int) {
+        db.writableDatabase.update("calendar", ContentValues().apply {
+            put("name", name)
+            put("color", color)
+        }, "id = ?", arrayOf(calendarId.toString()))
+        changed()
+    }
+
+    /** Borra el calendario del dispositivo con sus eventos y sus cambios pendientes. */
+    fun deleteCalendar(calendarId: Long) {
+        db.writableDatabase.delete("calendar", "id = ?", arrayOf(calendarId.toString()))
+        changed()
+    }
+
+    /**
+     * Un calendario que desapareció del servidor pasa a ser local: sus eventos quedan en el
+     * dispositivo, sin vínculo con el servidor ni cambios pendientes.
+     */
+    fun keepAsLocal(calendarId: Long) {
+        db.writableDatabase.transaction {
+            delete("change", "calendar_id = ?", arrayOf(calendarId.toString()))
+            delete("event", "calendar_id = ? AND deleted = 1", arrayOf(calendarId.toString()))
+            update("event", ContentValues().apply { putNull("url"); putNull("etag") }, "calendar_id = ?", arrayOf(calendarId.toString()))
+            update("calendar", ContentValues().apply {
+                put("account_id", Db.LOCAL_ACCOUNT)
+                putNull("url")
+                putNull("ctag")
+                putNull("sync_token")
+                put("missing", 0)
+                put("read_only", 0)
+            }, "id = ?", arrayOf(calendarId.toString()))
+        }
+        changed()
+    }
+
+    /** Todos los .ics de un calendario (para exportar). */
+    fun eventsOf(calendarId: Long): List<String> =
+        db.readableDatabase.rawQuery("SELECT ics FROM event WHERE calendar_id = ? AND deleted = 0", arrayOf(calendarId.toString())).use { c ->
+            buildList { while (c.moveToNext()) add(c.getString(0)) }
+        }
+
+    fun eventCount(calendarId: Long): Int =
+        db.readableDatabase.rawQuery("SELECT COUNT(*) FROM event WHERE calendar_id = ? AND deleted = 0", arrayOf(calendarId.toString())).use { c ->
+            if (c.moveToFirst()) c.getInt(0) else 0
+        }
+
+    // --- Suscripciones (solo en el dispositivo) ---
+
+    fun addSubscription(url: String, name: String, color: Int, refreshMinutes: Int, acceptedHosts: Set<String>): Long {
+        var calendarId = 0L
+        db.writableDatabase.transaction {
+            val accountId = insertOrThrow("account", null, ContentValues().apply {
+                put("kind", Db.KIND_SUBSCRIPTION)
+                put("server_url", url)
+                put("refresh_minutes", refreshMinutes)
+                put("accepted_hosts", acceptedHosts.joinToString(" "))
+            })
+            calendarId = insertOrThrow("calendar", null, ContentValues().apply {
+                put("account_id", accountId)
+                put("url", url)
+                put("name", name)
+                put("color", color)
+                put("read_only", 1)
+            })
+        }
+        changed()
+        return calendarId
+    }
+
+    fun updateSubscription(accountId: Long, refreshMinutes: Int) {
+        db.writableDatabase.update("account", ContentValues().apply { put("refresh_minutes", refreshMinutes) }, "id = ?", arrayOf(accountId.toString()))
+        changed()
+    }
+
+    fun acceptHost(accountId: Long, host: String) {
+        val current = account(accountId)?.acceptedHosts.orEmpty()
+        db.writableDatabase.update("account", ContentValues().apply { put("accepted_hosts", (current + host.lowercase()).joinToString(" ")) }, "id = ?", arrayOf(accountId.toString()))
+        changed()
+    }
+
+    fun feedRefreshed(accountId: Long, etag: String?, lastModified: String?) {
+        db.writableDatabase.update("account", ContentValues().apply {
+            if (etag != null) put("feed_etag", etag) else putNull("feed_etag")
+            if (lastModified != null) put("feed_last_modified", lastModified) else putNull("feed_last_modified")
+        }, "id = ?", arrayOf(accountId.toString()))
+    }
+
+    /** Reemplaza todos los eventos de una suscripción por los del feed. */
+    fun replaceEvents(calendarId: Long, events: List<StoredEvent>) {
+        db.writableDatabase.transaction {
+            delete("event", "calendar_id = ?", arrayOf(calendarId.toString()))
+        }
+        applyEvents(calendarId, events, emptyList())
+        changed()
+    }
+
+    fun calendarOf(accountId: Long): CalendarRow? = calendars().firstOrNull { it.accountId == accountId }
+
+    fun deleteSubscription(accountId: Long) {
+        db.writableDatabase.delete("account", "id = ? AND kind = ?", arrayOf(accountId.toString(), Db.KIND_SUBSCRIPTION))
+        changed()
     }
 
     // --- Eventos guardados y cola de cambios ---
@@ -552,6 +691,10 @@ object Repo {
         lastSync = long("last_sync"),
         retryAt = long("retry_at"),
         attempts = long("attempts")?.toInt() ?: 0,
+        feedEtag = str("feed_etag"),
+        feedLastModified = str("feed_last_modified"),
+        refreshMinutes = long("refresh_minutes")?.toInt(),
+        acceptedHosts = str("accepted_hosts")?.split(' ')?.filter { it.isNotBlank() }?.toSet().orEmpty(),
     )
 
     private fun Cursor.calendar() = CalendarRow(
@@ -563,5 +706,6 @@ object Repo {
         visible = long("visible") == 1L,
         readOnly = long("read_only") == 1L,
         events = long("events")?.toInt() ?: 0,
+        missing = long("missing") == 1L,
     )
 }

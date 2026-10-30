@@ -102,7 +102,7 @@ fun SettingsScreen(padding: PaddingValues, onBack: () -> Unit, onAccount: () -> 
                     }
                 }) { m ->
                     edit { it.copy(syncIntervalMinutes = m) }
-                    SyncScheduler.schedulePeriodic(m, hasAccount = true)
+                    SyncScheduler.refreshSchedule()
                 }
                 Text(str(R.string.sync_interval_hint), fontSize = 12.sp, color = p.contentSecondary)
             }

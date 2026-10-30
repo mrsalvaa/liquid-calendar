@@ -120,7 +120,7 @@ object SyncEngine {
             val id = Repo.saveCaldavAccount(existingId, server.toString(), username, discovery.principalUrl, discovery.homeUrl)
             if (password != null) credentials.save(id, password)
             Repo.replaceRemoteCalendars(id, discovery.calendars) { str(R.string.unnamed_calendar) }
-            SyncScheduler.schedulePeriodic(dev.liquidcalendar.data.Stores.settings.value.syncIntervalMinutes, hasAccount = true)
+            SyncScheduler.refreshSchedule()
             guard.reset()
             guardStore.update { emptyList() }
             id
@@ -132,6 +132,43 @@ object SyncEngine {
             Repo.deleteAccount(id)
             credentials.delete(id)
             SyncScheduler.cancelAll()
+        }
+    }
+
+    /** Resultado de una operación directa sobre el servidor (crear, renombrar o borrar un calendario). */
+    sealed interface OpResult<out T> {
+        data class Ok<T>(val value: T) : OpResult<T>
+        data object NoAccount : OpResult<Nothing>
+        data object NeedsPassword : OpResult<Nothing>
+        data class Wait(val until: Instant) : OpResult<Nothing>
+        data class Failed(val error: DavException) : OpResult<Nothing>
+    }
+
+    /**
+     * Una operación sobre el servidor con las mismas reglas que la sincronización: nada si la cuenta
+     * requiere contraseña o si el servidor pidió esperar; el primer 401 marca la cuenta y corta.
+     */
+    suspend fun <T> serverOp(block: (CalDav, homeUrl: String, accountId: Long) -> T): OpResult<T> = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            val account = Repo.caldavAccount() ?: return@withLock OpResult.NoAccount
+            if (account.state == AccountState.NEEDS_PASSWORD) return@withLock OpResult.NeedsPassword
+            account.retryAt?.let { if (it > System.currentTimeMillis()) return@withLock OpResult.Wait(Instant.ofEpochMilli(it)) }
+            val password = credentials.load(account.id)
+            val server = (account.serverUrl?.let { parseServer(it) } as? ServerUrl.Result.Ok)?.url
+            val home = account.homeUrl
+            if (password == null || server == null || account.username == null || home == null) return@withLock OpResult.NeedsPassword
+            try {
+                OpResult.Ok(block(CalDav(DavClient(server, Credentials(account.username, password))), home, account.id))
+            } catch (e: DavException) {
+                AppLog.event("server_op_failed", e)
+                if (e is DavException.Unauthorized) {
+                    recordLoginFailure()
+                    Repo.updateSyncState(account.id, AccountState.NEEDS_PASSWORD, e.code, null, 0)
+                    OpResult.NeedsPassword
+                } else {
+                    OpResult.Failed(e)
+                }
+            }
         }
     }
 

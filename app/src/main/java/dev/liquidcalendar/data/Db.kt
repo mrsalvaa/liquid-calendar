@@ -73,6 +73,7 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
         createV3(db)
         createV4(db)
         createV5(db)
+        createV6(db)
 
         db.insert("account", null, ContentValues().apply {
             put("id", LOCAL_ACCOUNT)
@@ -104,6 +105,19 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
         if (oldVersion < 3) createV3(db)
         if (oldVersion < 4) createV4(db)
         if (oldVersion < 5) createV5(db)
+        if (oldVersion < 6) createV6(db)
+    }
+
+    /**
+     * v6: calendarios que desaparecieron del servidor (no se borran: el usuario decide) y
+     * suscripciones (cuentas KIND_SUBSCRIPTION de solo lectura, con su caché HTTP).
+     */
+    private fun createV6(db: SQLiteDatabase) {
+        db.execSQL("ALTER TABLE calendar ADD COLUMN missing INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE account ADD COLUMN feed_etag TEXT")
+        db.execSQL("ALTER TABLE account ADD COLUMN feed_last_modified TEXT")
+        db.execSQL("ALTER TABLE account ADD COLUMN refresh_minutes INTEGER")
+        db.execSQL("ALTER TABLE account ADD COLUMN accepted_hosts TEXT")
     }
 
     /** v5: un cambio puede esperar a otro (la serie nueva de "esta y las siguientes" espera al corte). */
@@ -149,10 +163,11 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
 
     companion object {
         const val NAME = "calendar.db"
-        const val VERSION = 5
+        const val VERSION = 6
         const val LOCAL_ACCOUNT = 1L
         const val KIND_LOCAL = "local"
         const val KIND_CALDAV = "caldav"
+        const val KIND_SUBSCRIPTION = "subscription"
         const val DEFAULT_COLOR = 0xFF8AB4F8.toInt()
         private const val RANGE_INDEX = "CREATE INDEX event_range ON event (start_ms, end_ms)"
 

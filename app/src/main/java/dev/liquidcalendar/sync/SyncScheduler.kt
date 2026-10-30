@@ -2,6 +2,11 @@ package dev.liquidcalendar.sync
 
 import android.annotation.SuppressLint
 import android.content.Context
+import dev.liquidcalendar.CalendarApp
+import dev.liquidcalendar.data.Repo
+import dev.liquidcalendar.data.Stores
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
@@ -40,9 +45,12 @@ object SyncScheduler {
     private val network = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
     /** (Re)programa la sincronización periódica; 0 la apaga. Sin cuenta CalDAV no programa nada. */
-    fun schedulePeriodic(minutes: Int, hasAccount: Boolean) {
+    fun schedulePeriodic(minutes: Int, hasAccount: Boolean, hasSubscriptions: Boolean = false) {
         val wm = WorkManager.getInstance(app)
-        if (minutes <= 0 || !hasAccount) {
+        // Con suscripciones hace falta un turno aunque la cuenta CalDAV esté "solo a mano".
+        @Suppress("NAME_SHADOWING")
+        val minutes = if ((minutes <= 0 || !hasAccount) && hasSubscriptions) 60 else minutes
+        if (minutes <= 0 || (!hasAccount && !hasSubscriptions)) {
             wm.cancelUniqueWork(PERIODIC)
             return
         }
@@ -50,6 +58,13 @@ object SyncScheduler {
             .setConstraints(network)
             .build()
         wm.enqueueUniquePeriodicWork(PERIODIC, ExistingPeriodicWorkPolicy.UPDATE, request)
+    }
+
+    /** Reprograma según lo que haya: cuenta CalDAV, suscripciones y el intervalo de los ajustes. */
+    fun refreshSchedule() {
+        CalendarApp.scope.launch(Dispatchers.IO) {
+            schedulePeriodic(Stores.settings.value.syncIntervalMinutes, Repo.caldavAccount() != null, Repo.subscriptions().isNotEmpty())
+        }
     }
 
     /** Subir pronto un cambio local (unos segundos de margen para agrupar varios cambios seguidos). */
@@ -88,6 +103,8 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
             is SyncResult.Wait -> SyncScheduler.retryAt(r.until)
             else -> Unit // Ok, sin cuenta, requiere contraseña o error permanente: esperar al próximo turno.
         }
+        // Las suscripciones van por su cuenta: no dependen de la cuenta CalDAV ni la frenan.
+        Subscriptions.refreshDue()
         return Result.success()
     }
 }

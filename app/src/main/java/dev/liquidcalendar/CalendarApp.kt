@@ -27,10 +27,7 @@ class CalendarApp : Application() {
         scope.launch {
             Repo.version.debounce(1500).collect { Reminders.reschedule() }
         }
-        scope.launch {
-            val hasAccount = withContext(Dispatchers.IO) { Repo.caldavAccount() != null }
-            SyncScheduler.schedulePeriodic(Stores.settings.value.syncIntervalMinutes, hasAccount)
-        }
+        SyncScheduler.refreshSchedule()
     }
 
     companion object {
