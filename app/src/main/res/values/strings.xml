@@ -26,7 +26,7 @@
     <string name="privacy_text">No ads, analytics, crash reports or telemetry. The app only connects to your server and to the subscriptions you add, always over HTTPS with certificate checks.</string>
     <string name="about">About</string>
     <string name="version">Version %s</string>
-    <string name="about_text">Free software under the GPL-3.0 license.</string>
+    <string name="about_text">Free software under the GPL-3.0 license. No ads or tracking: it only connects to your server and to the subscriptions you add.</string>
 
     <!-- Apariencia -->
     <string name="appearance">Appearance</string>

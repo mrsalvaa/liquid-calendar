@@ -2,6 +2,16 @@
 
 Lo que todavía no hace la app o hace de forma parcial. Se actualiza en cada etapa.
 
+## Versión 1.0.0 (etapa 7)
+
+- Release firmada con una clave propia de Calendar (en `~/.android-keys/`, fuera del repo). El
+  certificado no lleva el usuario del sistema.
+- La release no tiene la excepción de `http` a 127.0.0.1/localhost: solo HTTPS con las
+  autoridades del sistema.
+- Sin metadatos de F-Droid (Clock y Gallery tampoco los tienen); `dependenciesInfo` sigue apagado.
+- El APK incluye `META-INF/version-control-info.textproto` (lo agrega AGP) con el hash del commit
+  desde el que se compiló. No tiene rutas ni datos personales.
+
 ## Resueltas en la etapa 6
 
 - Calendarios en el servidor: crear (MKCALENDAR con nombre, color y "eventos" o "eventos y

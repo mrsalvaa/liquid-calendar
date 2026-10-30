@@ -1,0 +1,25 @@
+# Registro de cambios
+
+[English](CHANGELOG.md) | **Español**
+
+## 1.0.0
+
+Primera versión.
+
+### Novedades
+- Vistas de mes, semana, día y agenda. En semana y día, pellizcar cambia la altura de las horas.
+- Calendarios que viven solo en el dispositivo y, opcional, una cuenta CalDAV (probado con Radicale 3.8).
+- Crear, editar y borrar eventos. En una serie: solo este, este y los siguientes, o todos, con un resumen antes de confirmar.
+- Recordatorios como notificaciones locales, privados en la pantalla de bloqueo por defecto. Hora exacta opcional.
+- Funciona sin conexión: los cambios esperan en una cola y nunca pisan una versión más nueva del servidor. Ante un conflicto se ven las dos versiones y se elige.
+- Crear, renombrar, recolorear y borrar calendarios en el servidor. Para borrar hay que escribir el nombre del calendario, y se ofrece exportarlo antes.
+- Si un calendario desaparece del servidor no se borra nada: se elige conservarlo en el dispositivo, exportarlo o descartarlo.
+- Suscripciones webcal/ICS de solo lectura que quedan en el dispositivo, actualizadas cada 1 h, 6 h, 12 h, día o semana, o solo a mano.
+- Importar y exportar archivos `.ics` (un calendario entero o un evento) con el selector de archivos del sistema.
+- Interfaz de cristal líquido compartida con Liquid Clock y Liquid Gallery: fondo liso, en movimiento o de color de énfasis, tema claro y oscuro, e íconos alternativos.
+
+### Seguridad y privacidad
+- Solo HTTPS, con las autoridades de certificación del sistema. Los certificados instalados por el usuario no se aceptan.
+- La contraseña se cifra con una clave guardada en el Android Keystore.
+- La primera contraseña incorrecta (401) corta todas las peticiones, en primer y segundo plano, hasta que la vuelvas a escribir.
+- Sin telemetría, sin servicios de Google, sin permisos de almacenamiento y sin copias de seguridad.

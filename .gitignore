@@ -8,6 +8,10 @@ captures/
 .externalNativeBuild/
 .cxx/
 dist/
+*.apk
+*.aab
+*.idsig
+*.apk.sha256
 
 # IDE y sistema
 local.properties
@@ -20,6 +24,7 @@ local.properties
 *.jks
 *.p12
 signing.properties
+.android-keys/
 
 # Secretos y datos locales: nunca al repo
 .env
@@ -29,6 +34,8 @@ signing.properties
 secrets/
 .secret-patterns
 *.htpasswd
+*.log
+hs_err_pid*
 !test/radicale/users.htpasswd
 
 # Datos de Radicale de pruebas y exportaciones

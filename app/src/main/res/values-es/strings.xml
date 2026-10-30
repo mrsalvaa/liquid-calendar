@@ -26,7 +26,7 @@
     <string name="privacy_text">Sin publicidad, analíticas, reportes de fallos ni telemetría. La app solo se conecta a tu servidor y a las suscripciones que agregues, siempre por HTTPS y verificando el certificado.</string>
     <string name="about">Acerca de</string>
     <string name="version">Versión %s</string>
-    <string name="about_text">Software libre bajo la licencia GPL-3.0.</string>
+    <string name="about_text">Software libre bajo la licencia GPL-3.0. Sin anuncios ni rastreo: solo se conecta a tu servidor y a las suscripciones que agregues.</string>
 
     <!-- Apariencia -->
     <string name="appearance">Apariencia</string>

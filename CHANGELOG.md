@@ -1,0 +1,25 @@
+# Changelog
+
+**English** | [Español](CHANGELOG.es.md)
+
+## 1.0.0
+
+First release.
+
+### New
+- Month, week, day and agenda views. In week and day, pinch to change the height of the hours.
+- Calendars that live only on the device, and an optional CalDAV account (tested with Radicale 3.8).
+- Create, edit and delete events. In a series: just this one, this and the following ones, or all of them, with a summary before confirming.
+- Reminders as local notifications, private on the lock screen by default. Optional exact timing.
+- Works offline: changes wait in a queue and never overwrite a newer version on the server. Conflicts show both versions and let you choose.
+- Create, rename, recolor and delete calendars on the server. Deleting asks you to type the calendar's name and offers to export it first.
+- If a calendar disappears from the server, nothing is deleted: you choose to keep it on the device, export it or discard it.
+- Read-only webcal/ICS subscriptions that stay on the device, refreshed every 1 h, 6 h, 12 h, day or week, or only by hand.
+- Import and export `.ics` files (whole calendar or a single event) through the system file picker.
+- Liquid-glass interface shared with Liquid Clock and Liquid Gallery: plain, moving or accent-colour background, light and dark theme, and alternative app icons.
+
+### Security and privacy
+- HTTPS only, with the system's certificate authorities. User-installed certificates are not trusted.
+- The password is encrypted with a key kept in the Android Keystore.
+- The first wrong password (401) stops every request, in the foreground and in the background, until you type it again.
+- No telemetry, no Google services, no storage permissions, and no backups.
