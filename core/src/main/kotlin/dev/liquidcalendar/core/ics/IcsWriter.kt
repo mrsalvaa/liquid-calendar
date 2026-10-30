@@ -77,7 +77,8 @@ object IcsWriter {
      * reescriben los campos que cambiaron respecto de [before]; DTSTAMP y LAST-MODIFIED siempre,
      * y SEQUENCE sube si cambió el horario (RFC 5545).
      */
-    fun patch(original: String, uid: String, before: EventDraft, draft: EventDraft, now: Instant = Instant.now(), zone: ZoneId? = null): String {
+    /** [ignoreRecurrenceId]: editar el VEVENT de ese UID aunque sea una excepción (para Series). */
+    fun patch(original: String, uid: String, before: EventDraft, draft: EventDraft, now: Instant = Instant.now(), zone: ZoneId? = null, ignoreRecurrenceId: Boolean = false): String {
         val fileZones = try {
             Ics.parseResource(original).fileZones
         } catch (e: IcsException) {
@@ -108,7 +109,7 @@ object IcsWriter {
                     if (u.startsWith("END:", ignoreCase = true)) depth--
                     if (depth == 1) {
                         when (nameOf(logical[j])) {
-                            "RECURRENCE-ID" -> isMaster = false
+                            "RECURRENCE-ID" -> isMaster = ignoreRecurrenceId
                             "UID" -> sameUid = u.substringAfter(':') == uid
                         }
                     }
