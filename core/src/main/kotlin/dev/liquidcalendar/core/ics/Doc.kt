@@ -186,6 +186,12 @@ internal class Doc private constructor(private val items: MutableList<String>) {
         items[i] = IcsWriter.fold(line.substringBefore(':') + ":" + ordered.joinToString(";"))
     }
 
+    /** Lo que va después del último VEVENT (algunos clientes ponen ahí las VTIMEZONE). */
+    fun tail(): List<String> {
+        val last = items.indexOfLast { unfold(it).equals("END:VEVENT", true) }
+        return if (last < 0) emptyList() else items.subList(last + 1, items.size).toList()
+    }
+
     /** Todo lo que va antes del primer VEVENT (encabezado y VTIMEZONE). */
     fun header(): List<String> = items.takeWhile { !unfold(it).equals("BEGIN:VEVENT", true) }
 
