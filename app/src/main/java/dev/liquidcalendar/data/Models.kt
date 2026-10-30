@@ -23,6 +23,8 @@ data class AppSettings(
     val firstDayOfWeek: Int = 7,
     /** Sincronización en segundo plano, en minutos (0 = solo a mano). Mínimo 30. */
     val syncIntervalMinutes: Int = 60,
+    /** Altura de una hora en las vistas de semana y día (dp); se cambia pellizcando. */
+    val hourHeight: Int = 56,
 ) {
     val glassStyle: GlassStyle get() = GlassStyle(themeMode, backgroundMode, colorSet, accentColor)
 

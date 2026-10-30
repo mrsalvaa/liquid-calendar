@@ -41,7 +41,7 @@
     <string name="background_accent">Color de énfasis</string>
     <string name="animated_background">Fondo animado</string>
     <string name="animated_background_hint">Desactivalo para ahorrar batería</string>
-    <string name="animated_background_reduced">Tu celu pide menos animaciones, así que el fondo queda quieto.</string>
+    <string name="animated_background_reduced">Tu dispositivo pide menos animaciones, así que el fondo queda quieto.</string>
     <string name="tone">Tono</string>
     <string name="tone_light">Claro</string>
     <string name="tone_medium">Medio</string>
@@ -67,9 +67,9 @@
     <string name="default_local_calendar">Personal</string>
     <string name="unnamed_calendar">Calendario sin nombre</string>
     <string name="calendars">Calendarios</string>
-    <string name="on_this_phone">En este celu</string>
-    <string name="local_only_hint">Los calendarios de este celu no se suben a ningún servidor.</string>
-    <string name="new_local_calendar">Nuevo calendario en este celu</string>
+    <string name="on_this_phone">En este dispositivo</string>
+    <string name="local_only_hint">Los calendarios de este dispositivo no se suben a ningún servidor.</string>
+    <string name="new_local_calendar">Nuevo calendario en este dispositivo</string>
     <string name="calendar_name">Nombre</string>
     <string name="create">Crear</string>
     <plurals name="events_count">
@@ -96,7 +96,7 @@
     <string name="username">Usuario</string>
     <string name="password">Contraseña</string>
     <string name="password_unchanged">Contraseña (sin cambios)</string>
-    <string name="account_hint">Solo HTTPS, verificando el certificado. La contraseña se guarda cifrada con el almacén de claves del celu y nunca aparece en los registros.</string>
+    <string name="account_hint">Solo HTTPS, verificando el certificado. La contraseña se guarda cifrada con el almacén de claves del dispositivo y nunca aparece en los registros.</string>
     <string name="test_connection">Probar conexión</string>
     <string name="testing">Probando…</string>
     <string name="save">Guardar</string>
@@ -106,9 +106,9 @@
         <item quantity="other">Conexión correcta: %d calendarios</item>
     </plurals>
     <string name="remove_account">Quitar cuenta</string>
-    <string name="remove_account_title">¿Quitar la cuenta de este celu?</string>
-    <string name="remove_account_text">Se borran sus calendarios y eventos solo de este celu; en el servidor no cambia nada.</string>
-    <string name="remove_account_confirm">Quitar del celu</string>
+    <string name="remove_account_title">¿Quitar la cuenta de este dispositivo?</string>
+    <string name="remove_account_text">Se borran sus calendarios y eventos solo de este dispositivo; en el servidor no cambia nada.</string>
+    <string name="remove_account_confirm">Quitar del dispositivo</string>
     <plurals name="blocked">
         <item quantity="one">Demasiadas contraseñas incorrectas. Esperá %d minuto antes de volver a probar.</item>
         <item quantity="many">Demasiadas contraseñas incorrectas. Esperá %d minutos antes de volver a probar.</item>
@@ -151,7 +151,7 @@
     <string name="show_more">Mostrar más</string>
     <string name="untitled_event">(Sin título)</string>
     <string name="recurring">Se repite</string>
-    <string name="local_badge">En este celu</string>
+    <string name="local_badge">En este dispositivo</string>
     <string name="synced_badge">Sincronizado con %s</string>
     <string name="time_range">%1$s – %2$s</string>
     <string name="date_range">Del %1$s al %2$s</string>
@@ -187,8 +187,8 @@
     <string name="series_read_only">Este evento se repite. Por ahora las series son de solo lectura: editar o borrar una podría cambiar las demás repeticiones, así que todavía no se permite.</string>
     <string name="unresolved_change">Este evento tiene un cambio que no se pudo subir. Resolvelo primero en Cambios pendientes.</string>
     <string name="delete_title">¿Borrar este evento?</string>
-    <string name="delete_local">Se borra de este celu. Este calendario no se sincroniza con ningún servidor.</string>
-    <string name="delete_synced">Se borra de este celu y del servidor %s en la próxima sincronización.</string>
+    <string name="delete_local">Se borra de este dispositivo. Este calendario no se sincroniza con ningún servidor.</string>
+    <string name="delete_synced">Se borra de este dispositivo y del servidor %s en la próxima sincronización.</string>
     <string name="delete_confirm">Borrar evento</string>
 
     <!-- Cambios pendientes -->
@@ -203,10 +203,10 @@
     <string name="discard">Descartar cambio</string>
     <string name="discard_title">¿Descartar este cambio?</string>
     <string name="discard_text">Tu cambio se pierde y el evento vuelve a la versión del servidor en la próxima sincronización.</string>
-    <string name="mine">En este celu</string>
+    <string name="mine">En este dispositivo</string>
     <string name="theirs">En el servidor</string>
     <string name="deleted_on_server">Borrado en el servidor</string>
-    <string name="deleted_here">Borrado en este celu</string>
+    <string name="deleted_here">Borrado en este dispositivo</string>
     <string name="keep_mine">Quedarme con la mía</string>
     <string name="keep_theirs">Usar la del servidor</string>
     <string name="decide_later">Decidir después</string>

@@ -41,7 +41,7 @@
     <string name="background_accent">Accent color</string>
     <string name="animated_background">Animated background</string>
     <string name="animated_background_hint">Turn it off to save battery</string>
-    <string name="animated_background_reduced">Your phone asks for fewer animations, so the background stays still.</string>
+    <string name="animated_background_reduced">Your device asks for fewer animations, so the background stays still.</string>
     <string name="tone">Shade</string>
     <string name="tone_light">Light</string>
     <string name="tone_medium">Medium</string>
@@ -67,9 +67,9 @@
     <string name="default_local_calendar">Personal</string>
     <string name="unnamed_calendar">Untitled calendar</string>
     <string name="calendars">Calendars</string>
-    <string name="on_this_phone">On this phone</string>
-    <string name="local_only_hint">Calendars on this phone are never uploaded to any server.</string>
-    <string name="new_local_calendar">New calendar on this phone</string>
+    <string name="on_this_phone">On this device</string>
+    <string name="local_only_hint">Calendars on this device are never uploaded to any server.</string>
+    <string name="new_local_calendar">New calendar on this device</string>
     <string name="calendar_name">Name</string>
     <string name="create">Create</string>
     <plurals name="events_count">
@@ -95,7 +95,7 @@
     <string name="username">Username</string>
     <string name="password">Password</string>
     <string name="password_unchanged">Password (unchanged)</string>
-    <string name="account_hint">HTTPS only, with certificate checks. The password is encrypted with your phone\'s keystore and never shows up in logs.</string>
+    <string name="account_hint">HTTPS only, with certificate checks. The password is encrypted with your device\'s keystore and never shows up in logs.</string>
     <string name="test_connection">Test connection</string>
     <string name="testing">Testing…</string>
     <string name="save">Save</string>
@@ -104,9 +104,9 @@
         <item quantity="other">Connected: %d calendars found</item>
     </plurals>
     <string name="remove_account">Remove account</string>
-    <string name="remove_account_title">Remove the account from this phone?</string>
-    <string name="remove_account_text">Its calendars and events are deleted from this phone only; nothing changes on the server.</string>
-    <string name="remove_account_confirm">Remove from this phone</string>
+    <string name="remove_account_title">Remove the account from this device?</string>
+    <string name="remove_account_text">Its calendars and events are deleted from this device only; nothing changes on the server.</string>
+    <string name="remove_account_confirm">Remove from this device</string>
     <plurals name="blocked">
         <item quantity="one">Too many wrong passwords. Wait %d minute before trying again.</item>
         <item quantity="other">Too many wrong passwords. Wait %d minutes before trying again.</item>
@@ -147,7 +147,7 @@
     <string name="show_more">Show more</string>
     <string name="untitled_event">(No title)</string>
     <string name="recurring">Repeats</string>
-    <string name="local_badge">On this phone</string>
+    <string name="local_badge">On this device</string>
     <string name="synced_badge">Synced with %s</string>
     <string name="time_range">%1$s – %2$s</string>
     <string name="date_range">From %1$s to %2$s</string>
@@ -182,8 +182,8 @@
     <string name="series_read_only">This event repeats. Series are read-only in this version: editing or deleting one could change the other repetitions, so it\'s not allowed yet.</string>
     <string name="unresolved_change">This event has a change that couldn\'t be uploaded. Resolve it in Pending changes first.</string>
     <string name="delete_title">Delete this event?</string>
-    <string name="delete_local">It\'s deleted from this phone. This calendar isn\'t synced with any server.</string>
-    <string name="delete_synced">It\'s deleted from this phone and from the server %s on the next sync.</string>
+    <string name="delete_local">It\'s deleted from this device. This calendar isn\'t synced with any server.</string>
+    <string name="delete_synced">It\'s deleted from this device and from the server %s on the next sync.</string>
     <string name="delete_confirm">Delete event</string>
 
     <!-- Cambios pendientes -->
@@ -198,10 +198,10 @@
     <string name="discard">Discard change</string>
     <string name="discard_title">Discard this change?</string>
     <string name="discard_text">Your change is lost and the event goes back to the server\'s version on the next sync.</string>
-    <string name="mine">On this phone</string>
+    <string name="mine">On this device</string>
     <string name="theirs">On the server</string>
     <string name="deleted_on_server">Deleted on the server</string>
-    <string name="deleted_here">Deleted on this phone</string>
+    <string name="deleted_here">Deleted on this device</string>
     <string name="keep_mine">Keep mine</string>
     <string name="keep_theirs">Keep the server\'s</string>
     <string name="decide_later">Decide later</string>

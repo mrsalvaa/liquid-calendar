@@ -1,6 +1,17 @@
 package dev.liquidcalendar.ui.screens.views
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import dev.liquidcalendar.data.Stores
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -55,7 +66,8 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneId
 
-private val HOUR = 56.dp
+/** Altura de la hora: entre "todo el día entra en pantalla" y esta. */
+private val MAX_HOUR = 140.dp
 private val GUTTER = 44.dp
 
 /** Semana (7 días) o día (1): franja de todo el día arriba y horas debajo. */
@@ -128,6 +140,60 @@ private fun AllDayStrip(days: List<LocalDate>, perDay: Map<LocalDate, List<Agend
 
 @Composable
 private fun HoursGrid(days: List<LocalDate>, perDay: Map<LocalDate, List<AgendaItem>>, clock: DeviceClock, onEvent: (AgendaItem) -> Unit, modifier: Modifier) {
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val density = LocalDensity.current
+        // Pellizcar arriba/abajo cambia la altura de cada hora (no es un zoom): como mínimo entra el
+        // día entero, siempre con una línea por hora; como máximo, MAX_HOUR.
+        val minPx = with(density) { (constraints.maxHeight / 24f).coerceAtLeast(18.dp.toPx()) }
+        val maxPx = with(density) { MAX_HOUR.toPx() }
+        var hourPx by remember { mutableFloatStateOf(with(density) { Stores.settings.value.hourHeight.dp.toPx() }) }
+        val clamped = hourPx.coerceIn(minPx, maxPx)
+        HoursGridContent(days, perDay, clock, onEvent, with(density) { clamped.toDp() }) { scroll ->
+            Modifier.pointerInput(minPx, maxPx) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    var pinched = false
+                    do {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val pressed = event.changes.filter { it.pressed }
+                        if (pressed.size >= 2) {
+                            val a = pressed[0]
+                            val b = pressed[1]
+                            val before = abs(a.previousPosition.y - b.previousPosition.y)
+                            val now = abs(a.position.y - b.position.y)
+                            if (before > 24f && now > 24f) {
+                                val old = hourPx.coerceIn(minPx, maxPx)
+                                val new = (old * now / before).coerceIn(minPx, maxPx)
+                                // Lo que está entre los dedos queda en su lugar.
+                                val focus = (a.position.y + b.position.y) / 2f
+                                val target = (scroll.value + focus) * new / old - focus
+                                hourPx = new
+                                scroll.dispatchRawDelta(target - scroll.value)
+                                pinched = true
+                            }
+                            // Con dos dedos no se desplaza la grilla.
+                            event.changes.forEach { it.consume() }
+                        }
+                    } while (event.changes.any { it.pressed })
+                    if (pinched) {
+                        val dp = with(density) { hourPx.coerceIn(minPx, maxPx).toDp().value.roundToInt() }
+                        Stores.settings.update { it.copy(hourHeight = dp) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HoursGridContent(
+    days: List<LocalDate>,
+    perDay: Map<LocalDate, List<AgendaItem>>,
+    clock: DeviceClock,
+    onEvent: (AgendaItem) -> Unit,
+    HOUR: Dp,
+    gesture: (ScrollState) -> Modifier,
+) {
     val p = LocalGlass.current
     val scroll = rememberScrollState()
     val density = LocalDensity.current
@@ -138,7 +204,7 @@ private fun HoursGrid(days: List<LocalDate>, perDay: Map<LocalDate, List<AgendaI
         val y = with(density) { (HOUR * hour).roundToPx() }
         if (reduced) scroll.scrollTo(y) else scroll.animateScrollTo(y)
     }
-    Box(modifier.fillMaxWidth().verticalScroll(scroll)) {
+    Box(Modifier.fillMaxSize().then(gesture(scroll)).verticalScroll(scroll)) {
         val line = p.content.copy(alpha = if (p.dark) 0.08f else 0.1f)
         Canvas(Modifier.fillMaxWidth().height(HOUR * 24)) {
             for (h in 0..24) {
@@ -173,7 +239,7 @@ private fun HoursGrid(days: List<LocalDate>, perDay: Map<LocalDate, List<AgendaI
                             showTime = true,
                         )
                     }
-                    if (d == clock.today) NowLine(clock.zone)
+                    if (d == clock.today) NowLine(clock.zone, HOUR)
                 }
             }
         }
@@ -181,7 +247,7 @@ private fun HoursGrid(days: List<LocalDate>, perDay: Map<LocalDate, List<AgendaI
 }
 
 @Composable
-private fun NowLine(zone: ZoneId) {
+private fun NowLine(zone: ZoneId, HOUR: Dp) {
     val p = LocalGlass.current
     val now = LocalTime.now(zone)
     val y = HOUR * ((now.hour * 60 + now.minute) / 60f)
