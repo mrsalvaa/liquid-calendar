@@ -9,8 +9,31 @@ A free CalDAV calendar for Android, made for a self-hosted server such as
 [Liquid Clock](https://github.com/mrsalvaa/liquid-clock) and
 [Liquid Gallery](https://github.com/mrsalvaa/liquid-gallery). Licensed under GPL-3.0.
 
-> Work in progress: there's no release yet. Right now the app has the interface and the
-> appearance settings; the CalDAV account, views and sync come next.
+<p align="center">
+  <img src="docs/screenshots/mes.png" width="200" alt="Month">
+  <img src="docs/screenshots/semana.png" width="200" alt="Week">
+  <img src="docs/screenshots/agenda.png" width="200" alt="Agenda">
+  <img src="docs/screenshots/detalle-serie.png" width="200" alt="Event in a series">
+</p>
+<p align="center">
+  <img src="docs/screenshots/resumen-serie.png" width="200" alt="Summary before changing a series">
+  <img src="docs/screenshots/calendarios.png" width="200" alt="Calendars">
+  <img src="docs/screenshots/ajustes-recordatorios.png" width="200" alt="Reminder settings">
+</p>
+
+> Work in progress: there's no release yet. Screenshots show test data (`scripts/demo-data.py`)
+> on a local Radicale.
+
+## What it does
+
+- Month, week, day and agenda views; in week and day, pinch to change the height of the hours.
+- Calendars stored on the device (never uploaded) and, optionally, a CalDAV account.
+- Create, edit and delete events; in a series, this one, this and following, or all of them,
+  with a summary before confirming.
+- Reminders as local notifications. By default they don't show the event on the lock screen.
+- Works offline: changes wait in a queue and never overwrite a newer version on the server.
+
+Known gaps are listed (in Spanish) in [docs/LIMITACIONES.md](docs/LIMITACIONES.md).
 
 ## Privacy
 

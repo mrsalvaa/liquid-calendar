@@ -9,8 +9,31 @@ Calendario CalDAV libre para Android, pensado para un servidor propio como
 [Liquid Clock](https://github.com/mrsalvaa/liquid-clock) y
 [Liquid Gallery](https://github.com/mrsalvaa/liquid-gallery). Licencia GPL-3.0.
 
-> En desarrollo: todavía no hay ninguna versión publicada. Por ahora la app tiene la interfaz y los
-> ajustes de apariencia; la cuenta CalDAV, las vistas y la sincronización vienen después.
+<p align="center">
+  <img src="docs/screenshots/mes.png" width="200" alt="Mes">
+  <img src="docs/screenshots/semana.png" width="200" alt="Semana">
+  <img src="docs/screenshots/agenda.png" width="200" alt="Agenda">
+  <img src="docs/screenshots/detalle-serie.png" width="200" alt="Detalle de una serie">
+</p>
+<p align="center">
+  <img src="docs/screenshots/resumen-serie.png" width="200" alt="Resumen antes de cambiar una serie">
+  <img src="docs/screenshots/calendarios.png" width="200" alt="Calendarios">
+  <img src="docs/screenshots/ajustes-recordatorios.png" width="200" alt="Ajustes de recordatorios">
+</p>
+
+> En desarrollo: todavía no hay ninguna versión publicada. Las capturas son de datos de prueba
+> (`scripts/demo-data.py`) en un Radicale local.
+
+## Qué hace
+
+- Vistas de mes, semana, día y agenda; en semana y día, pellizcar cambia la altura de las horas.
+- Calendarios en el dispositivo (nunca se suben) y, opcional, una cuenta CalDAV.
+- Crear, editar y borrar eventos; en una serie, solo esta, esta y las siguientes, o todas, con un
+  resumen antes de confirmar.
+- Recordatorios con notificaciones locales. Por defecto no muestran el evento con el celu bloqueado.
+- Sin conexión: los cambios esperan en una cola y nunca pisan una versión más nueva del servidor.
+
+Lo que todavía falta o funciona a medias está en [docs/LIMITACIONES.md](docs/LIMITACIONES.md).
 
 ## Privacidad
 

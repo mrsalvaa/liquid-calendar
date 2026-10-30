@@ -10,6 +10,22 @@ Lo que todavía no hace la app o hace de forma parcial. Se actualiza en cada eta
 - Un evento flotante editado sigue flotante.
 - Recordatorios: se leen, se muestran, se crean y se editan, con notificaciones locales.
 
+## Probado en el celu (etapa 5)
+
+Galaxy S24 FE, Android 16, contra Radicale 3.8.3 local con datos de prueba.
+
+- Serie de 10 clases: "solo esta" (título), "esta y las siguientes" (título), "todas" (ubicación)
+  y borrar "solo esta". En el servidor quedaron dos archivos: la serie original cortada con UNTIL
+  (con el EXDATE, la excepción y la ubicación nueva) y la serie nueva con COUNT=6. Sin duplicados
+  ni huérfanos; el VALARM y la propiedad X- de "otro cliente" se conservaron en las dos.
+- Recordatorio inexacto: avisó dentro de la ventana que dio Android (unos 60 s).
+- Recordatorio con "Hora exacta": alarma exacta (ventana 0); avisó a los 0,85 s.
+- Pantalla bloqueada: la notificación es privada; la versión pública dice solo "Recordatorio de
+  un evento".
+- Reinicio: la alarma se reprogramó sola al desbloquear (sin abrir la app) y el aviso sonó.
+- Cambio de zona a Europe/Madrid: la alarma siguió en el mismo instante (17:45 en Buenos Aires =
+  21:45 en Madrid). La zona se volvió a dejar como estaba.
+
 ## Abiertas
 
 | # | Limitación | Plan |
