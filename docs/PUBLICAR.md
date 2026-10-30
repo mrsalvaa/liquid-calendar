@@ -18,6 +18,10 @@ Pasos para publicar a mano. Nada de esto lo hace ningún script del repo.
 
 ## Compilar y firmar
 
+Compilar desde un clon limpio en el commit de la versión: así el APK lleva ese hash en
+`META-INF/version-control-info.textproto` (un worktree no sirve, AGP no encuentra git ahí). El
+commit que agrega el SHA-256 al README va después.
+
 La clave está en `~/.android-keys/liquid-calendar.jks` y sus datos en
 `~/.android-keys/liquid-calendar.properties`, fuera del repo. Hay que guardar una copia de los
 dos en un lugar seguro: sin esa clave no se pueden publicar actualizaciones que Android acepte

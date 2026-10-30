@@ -82,7 +82,7 @@ sha256sum -c liquid-calendar-v1.0.0.apk.sha256
 ```
 
 ```
-APK_SHA256  liquid-calendar-v1.0.0.apk
+6a3b146941606b47bd6ce5457b800aed24943668ad9fb739fc0c4cbddd2f1c39  liquid-calendar-v1.0.0.apk
 ```
 
 And that it's signed with the project key (SHA-256 certificate fingerprint):
