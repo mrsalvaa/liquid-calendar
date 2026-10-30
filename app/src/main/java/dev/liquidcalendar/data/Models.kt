@@ -21,8 +21,6 @@ data class AppSettings(
     val uiStyle: Int = 0,
     /** Color de énfasis del estilo sólido, en ARGB (aparte del de Liquid Glass). */
     val solidAccent: Long = 0xFF0EA5E9,
-    /** Barra inferior del estilo sólido: 0 = plana a lo ancho, 1 = flotante. */
-    val solidNavBar: Int = 0,
     /** Índice del icono de la app (ver AppIcons). */
     val appIcon: Int = 0,
     /** Primer día de la semana: 0 = según el idioma del teléfono, 1 (lunes) a 7 (domingo). */

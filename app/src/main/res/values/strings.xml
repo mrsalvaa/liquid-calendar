@@ -34,9 +34,6 @@
     <string name="ui_style_liquid">Liquid Glass</string>
     <string name="ui_style_solid">Solid</string>
     <string name="ui_style_solid_hint">Opaque cards on a plain background, no glass effects.</string>
-    <string name="nav_bar">Bottom bar</string>
-    <string name="nav_bar_flat">Flat</string>
-    <string name="nav_bar_floating">Floating</string>
     <string name="theme">Theme</string>
     <string name="theme_system">System</string>
     <string name="theme_light">Light</string>

@@ -5,7 +5,7 @@
 ## Sin publicar
 
 ### Novedades
-- Estilo de interfaz: además de Liquid Glass (el predeterminado, con todas sus opciones de siempre) está "Sólido", con tarjetas opacas sobre fondo liso y sin efectos de cristal. Tiene tema claro u oscuro, su propio color de énfasis y barra inferior plana o flotante.
+- Estilo de interfaz: además de Liquid Glass (el predeterminado, con todas sus opciones de siempre) está "Sólido", con tarjetas opacas sobre fondo liso y sin efectos de cristal. Es más sobrio: esquinas menos redondeadas, botones rectangulares y barra inferior acoplada. Tiene tema claro u oscuro y su propio color de énfasis.
 - Al conectar el servidor se le puede poner un nombre. Se muestra en lugar de la dirección, que puede ser larga.
 
 ### Mejoras

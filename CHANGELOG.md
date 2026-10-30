@@ -5,7 +5,7 @@
 ## Unreleased
 
 ### New
-- Interface style: besides Liquid Glass (the default, with all its usual options) there is "Solid", with opaque cards on a plain background and no glass effects. It has light or dark theme, its own accent colour and a flat or floating bottom bar.
+- Interface style: besides Liquid Glass (the default, with all its usual options) there is "Solid", with opaque cards on a plain background and no glass effects. It is plainer: less rounded corners, rectangular buttons and a docked bottom bar. It has light or dark theme and its own accent colour.
 - You can give the server a name when connecting. It is shown instead of the address, which can be long.
 
 ### Improved

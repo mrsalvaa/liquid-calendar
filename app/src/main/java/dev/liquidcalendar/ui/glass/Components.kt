@@ -47,6 +47,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
+import kotlin.math.abs
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
@@ -255,6 +260,7 @@ private fun SolidSurface(
 ) {
     val p = LocalGlass.current
     val level = LocalSolidLevel.current
+    val shape = remember(shape) { SolidShape(shape) }
     val scale by animateFloatAsState(if (pressed) 0.97f else 1f, spring(stiffness = 900f), label = "press")
     val fill = p.levels[level.coerceAtMost(p.levels.lastIndex)]
     Box(
@@ -284,6 +290,26 @@ private fun SolidSurface(
             Box(content = content)
         }
     }
+}
+
+/**
+ * Forma sobria del estilo sólido a partir de la de Liquid Glass: las esquinas grandes se achican
+ * a la mitad (tarjetas 14 dp, diálogos 16 dp) y las pastillas pasan a rectángulos de 10 dp. Lo
+ * cuadrado y redondo (botones de ícono) sigue siendo un círculo.
+ */
+private class SolidShape(private val original: Shape) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val r = (original as? RoundedCornerShape)?.topStart?.toPx(size, density)
+            ?: return original.createOutline(size, layoutDirection, density)
+        val minSide = minOf(size.width, size.height)
+        val pill = r >= minSide / 2 - 0.5f
+        if (pill && abs(size.width - size.height) < 1f) return original.createOutline(size, layoutDirection, density)
+        val radius = with(density) { if (pill) 10.dp.toPx() else (r / 2).coerceIn(6.dp.toPx(), 16.dp.toPx()) }
+        return RoundedCornerShape(radius).createOutline(size, layoutDirection, density)
+    }
+
+    override fun equals(other: Any?) = other is SolidShape && other.original == original
+    override fun hashCode() = original.hashCode()
 }
 
 /**

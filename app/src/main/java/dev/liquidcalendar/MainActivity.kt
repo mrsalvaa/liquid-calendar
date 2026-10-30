@@ -145,7 +145,7 @@ class MainActivity : ComponentActivity() {
             val settings by Stores.settings.state.collectAsStateWithLifecycle()
             SystemBarsFor(isDarkTheme(settings.themeMode))
             GlassTheme(settings.glassStyle) {
-                App(settings.animatedBackground, settings.weekStart(), flatNav = settings.uiStyle == 1 && settings.solidNavBar == 0)
+                App(settings.animatedBackground, settings.weekStart(), flatNav = settings.uiStyle == 1)
             }
         }
     }

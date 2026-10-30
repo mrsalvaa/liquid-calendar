@@ -74,14 +74,9 @@ fun AppearanceCard(s: AppSettings, edit: ((AppSettings) -> AppSettings) -> Unit)
         }
 
         if (s.uiStyle == 1) {
-            // Sólido: color de énfasis propio (no pisa el de Liquid Glass) y tipo de barra inferior.
+            // Sólido: color de énfasis propio (no pisa el de Liquid Glass).
             Label(str(R.string.background_accent))
             AccentPicker(s.solidAccent) { c -> edit { it.copy(solidAccent = c) } }
-
-            Label(str(R.string.nav_bar))
-            ChipRow(listOf(0, 1), s.solidNavBar, { str(listOf(R.string.nav_bar_flat, R.string.nav_bar_floating)[it]) }) { v ->
-                edit { it.copy(solidNavBar = v) }
-            }
         } else {
             LiquidBackgroundOptions(s, edit)
         }
