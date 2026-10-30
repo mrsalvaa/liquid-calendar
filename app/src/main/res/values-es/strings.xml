@@ -300,6 +300,7 @@
     <string name="subscription_ip_notice">Cada actualización consulta al servidor del feed (%s), que así ve la IP de este dispositivo. Las suscripciones son de solo lectura y nunca se suben a ningún lado.</string>
     <string name="subscription_ip_notice_generic">Cada actualización consulta al servidor del feed, que así ve la IP de este dispositivo. Las suscripciones son de solo lectura y nunca se suben a ningún lado.</string>
     <string name="refresh_every">Actualizar</string>
+    <string name="feed_unchanged">El feed no cambió desde la última actualización.</string>
     <string name="refresh_now">Actualizar ahora</string>
     <string name="sync_every_day">Cada día</string>
     <string name="sync_every_week">Cada semana</string>
@@ -372,5 +373,4 @@
         <item quantity="other">%d eventos importados</item>
     </plurals>
     <string name="import_error">No es un archivo .ics válido o es demasiado grande.</string>
-    <string name="calendar_saved">Guardado</string>
 </resources>

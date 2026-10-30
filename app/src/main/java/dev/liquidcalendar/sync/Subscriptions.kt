@@ -1,5 +1,6 @@
 package dev.liquidcalendar.sync
 
+import dev.liquidcalendar.BuildConfig
 import dev.liquidcalendar.core.dav.DavException
 import dev.liquidcalendar.core.feed.FeedClient
 import dev.liquidcalendar.core.feed.FeedResult
@@ -33,6 +34,20 @@ object Subscriptions {
     private val client = FeedClient()
     private val policy = RetryPolicy(base = Duration.ofMinutes(15), max = Duration.ofHours(24))
     private val mutex = Mutex()
+
+    /**
+     * Solo https (webcal:// cuenta como https). Las compilaciones de prueba, nunca la release,
+     * aceptan además http hacia el propio celu, para un feed local reenviado con adb reverse.
+     */
+    fun parse(input: String): FeedUrl.Result {
+        val r = FeedUrl.parse(input, allowHttp = BuildConfig.LOCALHOST_HTTP)
+        if (r is FeedUrl.Result.Ok && r.url.toString().startsWith("http://") && r.url.host !in LOOPBACK) {
+            return FeedUrl.Result.Invalid(FeedUrl.Reason.HTTP_NOT_ALLOWED)
+        }
+        return r
+    }
+
+    private val LOOPBACK = setOf("127.0.0.1", "localhost")
 
     sealed interface Result {
         data class Ok(val events: Int) : Result
@@ -83,7 +98,7 @@ object Subscriptions {
             account.retryAt?.let { if (it > now) return@withLock Result.Wait(Instant.ofEpochMilli(it)) }
             val interval = account.refreshMinutes ?: DEFAULT_INTERVAL
             if (!force && (interval <= 0 || (account.lastSync ?: 0) + interval * 60_000L > now)) return@withLock Result.Unchanged
-            val feed = (account.serverUrl?.let { FeedUrl.parse(it) } as? FeedUrl.Result.Ok)?.url ?: return@withLock Result.Failed(null)
+            val feed = (account.serverUrl?.let { parse(it) } as? FeedUrl.Result.Ok)?.url ?: return@withLock Result.Failed(null)
             val calendar = Repo.calendarOf(account.id) ?: return@withLock Result.Failed(null)
             try {
                 when (val r = client.fetch(feed, account.feedEtag, account.feedLastModified, account.acceptedHosts)) {

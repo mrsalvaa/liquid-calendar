@@ -25,6 +25,14 @@ import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.rounded.RadioButtonChecked
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import dev.liquidcalendar.ui.glass.SettingRow
+import dev.liquidcalendar.ui.screens.views.OriginIcon
+import dev.liquidcalendar.ui.screens.views.originText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,7 +74,6 @@ import dev.liquidcalendar.ui.glass.ACCENT_HUES
 import dev.liquidcalendar.ui.glass.DialogSpec
 import dev.liquidcalendar.ui.glass.GlassButton
 import dev.liquidcalendar.ui.glass.GlassCard
-import dev.liquidcalendar.ui.glass.GlassChip
 import dev.liquidcalendar.ui.glass.GlassTextField
 import dev.liquidcalendar.ui.glass.LocalDialog
 import dev.liquidcalendar.ui.glass.LocalGlass
@@ -299,9 +306,10 @@ fun SubscriptionScreen(calendarId: Long?, padding: PaddingValues, onBack: () -> 
     var color by rememberSaveable { mutableIntStateOf(info?.color ?: CALENDAR_COLORS[3]) }
     var interval by rememberSaveable { mutableIntStateOf(account?.refreshMinutes ?: Subscriptions.DEFAULT_INTERVAL) }
     var message by remember { mutableStateOf<String?>(null) }
+    var notice by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     val accepted = remember { mutableStateOf(account?.acceptedHosts.orEmpty()) }
-    val feed = (FeedUrl.parse(url) as? FeedUrl.Result.Ok)?.url
+    val feed = (Subscriptions.parse(url) as? FeedUrl.Result.Ok)?.url
 
     fun intervalLabel(m: Int) = when {
         m == 0 -> str(R.string.sync_manual)
@@ -380,27 +388,33 @@ fun SubscriptionScreen(calendarId: Long?, padding: PaddingValues, onBack: () -> 
             Text(feed?.let { str(R.string.subscription_ip_notice, it.host) } ?: str(R.string.subscription_ip_notice_generic), fontSize = 13.sp, color = p.contentSecondary)
         }
         if (message != null) Text(message!!, Modifier.padding(8.dp).semantics { liveRegion = LiveRegionMode.Polite }, fontSize = 14.sp, color = p.danger)
+        if (notice != null) Text(notice!!, Modifier.padding(8.dp).semantics { liveRegion = LiveRegionMode.Polite }, fontSize = 14.sp, color = p.contentSecondary)
         GlassButton(str(R.string.save), ::save, Modifier.fillMaxWidth().padding(top = 16.dp), prominent = true, enabled = !busy && feed != null)
         if (account != null && info != null) {
-            GlassButton(str(R.string.refresh_now), {
+            fun refreshNow() {
                 busy = true
+                message = null
+                notice = null
                 scope.launch {
-                    val r = Subscriptions.refresh(account, force = true)
+                    // La cuenta se relee: puede tener un host recién aceptado.
+                    val current = withContext(Dispatchers.IO) { Repo.account(account.id) } ?: return@launch
+                    val r = Subscriptions.refresh(current, force = true)
                     busy = false
-                    message = when (r) {
-                        is Subscriptions.Result.Ok -> plural(R.plurals.feed_events, r.events, r.events)
-                        Subscriptions.Result.Unchanged -> str(R.string.calendar_saved)
-                        is Subscriptions.Result.Redirect -> {
-                            askRedirect(r.to) {
-                                scope.launch(Dispatchers.IO) { Repo.acceptHost(account.id, r.to.authority) }
+                    when (r) {
+                        is Subscriptions.Result.Ok -> notice = plural(R.plurals.feed_events, r.events, r.events)
+                        Subscriptions.Result.Unchanged -> notice = str(R.string.feed_unchanged)
+                        is Subscriptions.Result.Redirect -> askRedirect(r.to) {
+                            scope.launch {
+                                withContext(Dispatchers.IO) { Repo.acceptHost(account.id, r.to.authority) }
+                                refreshNow()
                             }
-                            null
                         }
-                        is Subscriptions.Result.Wait -> str(R.string.err_busy)
-                        is Subscriptions.Result.Failed -> r.error?.let { errorMessage(it) } ?: str(R.string.feed_not_ics)
+                        is Subscriptions.Result.Wait -> message = str(R.string.err_busy)
+                        is Subscriptions.Result.Failed -> message = r.error?.let { errorMessage(it) } ?: str(R.string.feed_not_ics)
                     }
                 }
-            }, Modifier.fillMaxWidth().padding(top = 10.dp), icon = Icons.Rounded.Sync, enabled = !busy)
+            }
+            GlassButton(str(R.string.refresh_now), ::refreshNow, Modifier.fillMaxWidth().padding(top = 10.dp), icon = Icons.Rounded.Sync, enabled = !busy)
             GlassButton(str(R.string.export_ics), { exportCalendar(export, info) }, Modifier.fillMaxWidth().padding(top = 10.dp), icon = Icons.Rounded.FileDownload)
             GlassButton(str(R.string.delete_calendar), {
                 scope.launch {
@@ -440,7 +454,23 @@ fun ImportScreen(preview: ImportPreview, padding: PaddingValues, onBack: () -> U
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 calendars.forEach { c ->
                     // Cada opción dice si es local o sincronizado (lo importado se sube en ese caso).
-                    GlassChip("${c.name} · ${dev.liquidcalendar.ui.screens.views.originText(c)}", c.id == chosen?.id, { target = c }, Modifier.fillMaxWidth())
+                    SettingRow(
+                        c.name,
+                        Modifier.selectable(c.id == chosen?.id, role = Role.RadioButton) { target = c },
+                        subtitle = originText(c),
+                        leading = {
+                            Box(Modifier.size(14.dp).clip(CircleShape).background(Color(c.color)))
+                            Spacer(Modifier.width(10.dp))
+                            OriginIcon(c, size = 16)
+                            Spacer(Modifier.width(10.dp))
+                        },
+                    ) {
+                        Icon(
+                            if (c.id == chosen?.id) Icons.Rounded.RadioButtonChecked else Icons.Rounded.RadioButtonUnchecked,
+                            null,
+                            tint = if (c.id == chosen?.id) p.accent else p.contentSecondary,
+                        )
+                    }
                 }
             }
         }

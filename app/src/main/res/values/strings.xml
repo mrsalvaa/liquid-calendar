@@ -289,6 +289,7 @@
     <string name="subscription_ip_notice">Every refresh contacts the feed\'s server (%s), which sees this device\'s IP address. Subscriptions are read-only and never uploaded anywhere.</string>
     <string name="subscription_ip_notice_generic">Every refresh contacts the feed\'s server, which sees this device\'s IP address. Subscriptions are read-only and never uploaded anywhere.</string>
     <string name="refresh_every">Refresh</string>
+    <string name="feed_unchanged">The feed hasn’t changed since the last update.</string>
     <string name="refresh_now">Refresh now</string>
     <string name="sync_every_day">Every day</string>
     <string name="sync_every_week">Every week</string>
@@ -353,5 +354,4 @@
         <item quantity="other">%d events imported</item>
     </plurals>
     <string name="import_error">That isn\'t a valid .ics file, or it\'s too large.</string>
-    <string name="calendar_saved">Saved</string>
 </resources>

@@ -19,6 +19,12 @@ A free CalDAV calendar for Android, made for a self-hosted server such as
   <img src="docs/screenshots/resumen-serie.png" width="200" alt="Summary before changing a series">
   <img src="docs/screenshots/calendarios.png" width="200" alt="Calendars">
   <img src="docs/screenshots/ajustes-recordatorios.png" width="200" alt="Reminder settings">
+  <img src="docs/screenshots/calendario-faltante.png" width="200" alt="Calendar deleted on the server">
+</p>
+<p align="center">
+  <img src="docs/screenshots/borrar-calendario.png" width="200" alt="Deleting a calendar">
+  <img src="docs/screenshots/suscripcion.png" width="200" alt="Subscription">
+  <img src="docs/screenshots/importar.png" width="200" alt="Import">
 </p>
 
 > Work in progress: there's no release yet. Screenshots show test data (`scripts/demo-data.py`)
@@ -32,6 +38,9 @@ A free CalDAV calendar for Android, made for a self-hosted server such as
   with a summary before confirming.
 - Reminders as local notifications. By default they don't show the event on the lock screen.
 - Works offline: changes wait in a queue and never overwrite a newer version on the server.
+- Create, rename, recolor and delete calendars on the server (deleting asks you to type the name).
+- Read-only webcal/ICS subscriptions that stay on the device, with a configurable refresh interval.
+- Import and export `.ics` files through the system file picker (no storage permission).
 
 Known gaps are listed (in Spanish) in [docs/LIMITACIONES.md](docs/LIMITACIONES.md).
 
@@ -49,7 +58,7 @@ Versions are pinned in `gradle/libs.versions.toml`. Besides AndroidX/Compose and
 
 | Library | Version | License | What for |
 |---|---|---|---|
-| OkHttp + Okio | 5.3.2 / 3.16.4 | Apache-2.0 | HTTP to the CalDAV server |
+| OkHttp + Okio | 5.3.2 / 3.16.4 | Apache-2.0 | HTTP to the CalDAV server and to subscriptions |
 | ical4j | 4.4.0 | BSD-3-Clause | iCalendar parsing and recurrences |
 | commons-lang3, commons-codec | 3.18.0, 1.17.0 | Apache-2.0 | required by ical4j |
 | threeten-extra | 1.8.0 | BSD-3-Clause | required by ical4j |

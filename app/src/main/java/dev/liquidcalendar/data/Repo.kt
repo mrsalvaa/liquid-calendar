@@ -288,7 +288,7 @@ object Repo {
         val subs = all.filter { it.isSubscription }.associateBy { it.id }
         return calendars().associate { c ->
             val sub = subs[c.accountId]
-            val host = if (sub != null) sub.serverUrl?.let { (dev.liquidcalendar.core.feed.FeedUrl.parse(it) as? dev.liquidcalendar.core.feed.FeedUrl.Result.Ok)?.url?.host } else hosts[c.accountId]
+            val host = if (sub != null) sub.serverUrl?.let { (dev.liquidcalendar.core.feed.FeedUrl.parse(it, allowHttp = true) as? dev.liquidcalendar.core.feed.FeedUrl.Result.Ok)?.url?.host } else hosts[c.accountId]
             c.id to CalendarInfo(c.id, c.name, c.color, local = c.accountId in locals, host = host, readOnly = c.readOnly || sub != null, subscription = sub != null, missing = c.missing)
         }
     }

@@ -1,5 +1,8 @@
 package dev.liquidcalendar.ui.glass
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.imePadding
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -56,13 +59,14 @@ fun BoxScope.DialogHost(spec: DialogSpec?, onDismiss: () -> Unit) {
     }
     AnimatedVisibility(
         spec != null,
-        modifier = Modifier.align(Alignment.Center).padding(20.dp),
+        modifier = Modifier.align(Alignment.Center).imePadding().padding(20.dp),
         enter = fadeIn() + if (reduced) EnterTransition.None else scaleIn(initialScale = 0.92f),
         exit = fadeOut() + if (reduced) ExitTransition.None else scaleOut(targetScale = 0.92f),
     ) {
         val s = last ?: return@AnimatedVisibility
         GlassSurface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(34.dp), strong = true, frost = 16.dp) {
-            Column(Modifier.padding(22.dp)) {
+            // Con teclado, el contenido se desplaza en lugar de quedar tapado.
+            Column(Modifier.verticalScroll(rememberScrollState()).padding(22.dp)) {
                 Text(s.title, Modifier.semantics { heading() }.padding(bottom = 12.dp), fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
                 s.content(onDismiss)
             }
