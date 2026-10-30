@@ -31,6 +31,10 @@ data class Occurrence(
      * tendría o tiene). Estable aunque la ocurrencia se haya movido.
      */
     val key: String,
+    /** Recordatorios de esta ocurrencia (los de su componente). */
+    val alarms: List<AlarmSpec> = emptyList(),
+    /** Inicio original (lo que sería su RECURRENCE-ID), para editar o borrar solo esta. */
+    val original: Moment? = null,
 )
 
 /** Cota del tiempo que puede ocupar un recurso, para filtrarlo en la base antes de expandirlo. */
@@ -238,5 +242,11 @@ object Recurrence {
         time = time,
         recurring = recurring,
         key = "${c.info.uid}|${identity(originalStart, zone, fz)}",
+        alarms = c.alarms,
+        original = when (val id = identity(originalStart, zone, fz)) {
+            is java.time.LocalDate -> Moment.Date(id)
+            is Instant -> Moment.Exact(id)
+            else -> null
+        },
     )
 }

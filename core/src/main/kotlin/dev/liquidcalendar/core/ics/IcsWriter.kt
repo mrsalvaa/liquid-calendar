@@ -14,6 +14,8 @@ data class EventDraft(
     val location: String?,
     val description: String?,
     val time: DraftTime,
+    /** Recordatorios: los que ya estaban llevan su clave y, si no se tocan, quedan igual. */
+    val alarms: List<AlarmSpec> = emptyList(),
 )
 
 sealed interface DraftTime {
@@ -68,6 +70,7 @@ object IcsWriter {
         lines += "SUMMARY:${text(draft.summary)}"
         draft.location?.takeIf { it.isNotBlank() }?.let { lines += "LOCATION:${text(it)}" }
         draft.description?.takeIf { it.isNotBlank() }?.let { lines += "DESCRIPTION:${text(it)}" }
+        draft.alarms.forEach { lines += Alarms.block(it, draft.summary) }
         lines += listOf("END:VEVENT", "END:VCALENDAR")
         return lines.joinToString("") { fold(it) + CRLF }
     }
@@ -146,8 +149,25 @@ object IcsWriter {
         var insertAt = -1
         var oldSequence = 0
         var startLine: String? = null
+        // Recordatorios: se quitan solo los que el usuario sacó (por su clave) y se agregan los nuevos.
+        val keptKeys = draft.alarms.mapNotNull { it.key }.toSet()
+        val removedKeys = before.alarms.mapNotNull { it.key }.filter { it !in keptKeys }.toSet()
+        val added = draft.alarms.filter { it.key == null }
+        var alarm: MutableList<MutableList<String>>? = null
         for (l in body) {
             val u = unfolded(l)
+            if (alarm != null) {
+                alarm += l
+                if (u.equals("END:VALARM", ignoreCase = true)) {
+                    if (Alarms.keyOf(alarm.map { g -> g.joinToString("\r\n") }) !in removedKeys) kept.addAll(alarm)
+                    alarm = null
+                }
+                continue
+            }
+            if (depth == 0 && u.equals("BEGIN:VALARM", ignoreCase = true)) {
+                alarm = mutableListOf(l)
+                continue
+            }
             if (depth == 0) {
                 val name = nameOf(l)
                 if (name == "SEQUENCE") oldSequence = u.substringAfter(':').trim().toIntOrNull() ?: 0
@@ -171,6 +191,7 @@ object IcsWriter {
             add("LAST-MODIFIED:${utc(now)}")
             if (timeChanged) add("SEQUENCE:${oldSequence + 1}")
         }.map { mutableListOf(fold(it).replace(CRLF, "\n")) }
+        if (added.isNotEmpty()) kept.addAll(added.flatMap { Alarms.block(it, draft.summary) }.map { mutableListOf(fold(it).replace(CRLF, "\n")) })
         // Las líneas nuevas van donde estaban las viejas (o antes de los componentes internos).
         val at = if (insertAt >= 0) insertAt else kept.indexOfFirst { unfolded(it).startsWith("BEGIN:", ignoreCase = true) }.let { if (it < 0) kept.size else it }
         kept.addAll(at, fresh)
@@ -202,7 +223,7 @@ object IcsWriter {
                 DraftTime.Timed(startInstant, startInstant.plus(length))
             }
         }
-        return EventDraft(c.info.summary.orEmpty(), c.info.location, c.info.description, time)
+        return EventDraft(c.info.summary.orEmpty(), c.info.location, c.info.description, time, c.alarms)
     }
 
     /** true si el recurso es una serie (RRULE/RDATE) o tiene excepciones: en esta versión no se edita. */

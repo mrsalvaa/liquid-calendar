@@ -68,6 +68,24 @@ internal class Doc private constructor(private val items: MutableList<String>) {
         return out
     }
 
+    /** Los VALARM del evento, cada uno con sus líneas tal cual. */
+    fun alarmBlocks(b: Block): List<List<String>> {
+        val out = mutableListOf<List<String>>()
+        var current: MutableList<String>? = null
+        for (i in b.start + 1 until b.end) {
+            val l = unfold(items[i])
+            if (current == null && l.equals("BEGIN:VALARM", true)) current = mutableListOf()
+            if (current != null) {
+                current += items[i]
+                if (l.equals("END:VALARM", true)) {
+                    out += current
+                    current = null
+                }
+            }
+        }
+        return out
+    }
+
     fun propLine(b: Block, name: String): String? = props(b).firstOrNull { Series.depth0Name(it.second) == name }?.second
 
     fun uidOf(b: Block): String? = propLine(b, "UID")?.substringAfter(':')

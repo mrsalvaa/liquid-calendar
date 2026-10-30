@@ -62,6 +62,9 @@ class EventComponent internal constructor(
     /** Zona propia del archivo (TZID no IANA): sus horas locales se convierten con ella. */
     internal val localZone: FileZone? = null,
 ) {
+    /** VALARM de este componente (leídos del texto crudo, para que su clave coincida al editar). */
+    var alarms: List<AlarmSpec> = emptyList()
+        internal set
     val allDay: Boolean get() = start is LocalDate
 }
 
@@ -102,7 +105,15 @@ object Ics {
             throw IcsException("iCalendar ilegible")
         }
         val zones = fileZones(calendar)
-        return IcsResource(calendar.getComponents<VEvent>(Component.VEVENT).mapNotNull { component(it, zones) }, zones)
+        val components = calendar.getComponents<VEvent>(Component.VEVENT).mapNotNull { component(it, zones) }
+        // Los VALARM se toman del texto tal cual, emparejando por UID y RECURRENCE-ID.
+        val doc = Doc(text)
+        for (b in doc.blocks()) {
+            val uid = doc.uidOf(b) ?: continue
+            val rid = doc.propLine(b, "RECURRENCE-ID")?.substringAfter(':')
+            components.firstOrNull { it.info.uid == uid && it.info.recurrenceId == rid }?.alarms = doc.alarmBlocks(b).mapNotNull(Alarms::parse)
+        }
+        return IcsResource(components, zones)
     }
 
     /** Las VTIMEZONE cuyo TZID no es una zona IANA, para resolver sus horas sin ayuda de la plataforma. */
