@@ -6,6 +6,8 @@ import dev.liquidcalendar.data.Stores
 import dev.liquidcalendar.sync.SyncEngine
 import dev.liquidcalendar.sync.SyncScheduler
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.debounce
+import dev.liquidcalendar.notify.Reminders
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +22,11 @@ class CalendarApp : Application() {
         Repo.init(this)
         SyncEngine.init(this)
         SyncScheduler.init(this)
+        Reminders.init(this)
+        // Cualquier cambio en los eventos (sincronización, edición, visibilidad) reprograma los recordatorios.
+        scope.launch {
+            Repo.version.debounce(1500).collect { Reminders.reschedule() }
+        }
         scope.launch {
             val hasAccount = withContext(Dispatchers.IO) { Repo.caldavAccount() != null }
             SyncScheduler.schedulePeriodic(Stores.settings.value.syncIntervalMinutes, hasAccount)

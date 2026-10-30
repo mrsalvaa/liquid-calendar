@@ -15,6 +15,14 @@
         tools:node="remove" />
 
     <!--
+        Recordatorios: POST_NOTIFICATIONS para mostrar los avisos (Android lo pide al usuario) y
+        SCHEDULE_EXACT_ALARM, opcional, para que suenen a la hora exacta: el usuario lo concede o
+        no en los ajustes del sistema; sin él se usa una alarma inexacta.
+    -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <!--
         Sin backup ni transferencia de datos a otro dispositivo (ver data_extraction_rules) y sin
         tráfico sin cifrar (ver network_security_config).
     -->
@@ -110,5 +118,21 @@
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             tools:node="remove" />
+
+        <receiver
+            android:name=".notify.ReminderReceiver"
+            android:exported="false" />
+        <!-- Reprogramar los recordatorios: solo mensajes del sistema (no los puede mandar otra app). -->
+        <receiver
+            android:name=".notify.SystemChangeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

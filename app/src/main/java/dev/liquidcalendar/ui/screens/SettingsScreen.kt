@@ -22,6 +22,16 @@ import dev.liquidcalendar.data.AccountState
 import dev.liquidcalendar.data.Repo
 import dev.liquidcalendar.data.Stores
 import dev.liquidcalendar.sync.SyncScheduler
+import dev.liquidcalendar.CalendarApp
+import dev.liquidcalendar.notify.Reminders
+import dev.liquidcalendar.notify.rememberExactAlarmSettings
+import dev.liquidcalendar.notify.rememberNotificationPermission
+import dev.liquidcalendar.ui.glass.GlassSwitch
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.produceState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -95,6 +105,39 @@ fun SettingsScreen(padding: PaddingValues, onBack: () -> Unit, onAccount: () -> 
                     SyncScheduler.schedulePeriodic(m, hasAccount = true)
                 }
                 Text(str(R.string.sync_interval_hint), fontSize = 12.sp, color = p.contentSecondary)
+            }
+        }
+
+        SectionLabel(str(R.string.reminders))
+        GlassCard {
+            var tick by remember { mutableIntStateOf(0) }
+            LifecycleResumeEffect(Unit) { tick++; onPauseOrDispose {} }
+            val canNotify = remember(tick) { Reminders.canNotify() }
+            val canExact = remember(tick) { Reminders.canExact() }
+            val requestNotifications = rememberNotificationPermission { tick++ }
+            val openExact = rememberExactAlarmSettings()
+            SettingRow(str(R.string.reminders_enabled), subtitle = str(R.string.reminders_enabled_hint)) {
+                GlassSwitch(s.remindersEnabled, { v ->
+                    edit { it.copy(remindersEnabled = v) }
+                    if (v) requestNotifications()
+                    CalendarApp.scope.launch { Reminders.reschedule() }
+                })
+            }
+            if (s.remindersEnabled && !canNotify) Text(str(R.string.reminders_no_permission), fontSize = 12.sp, color = p.danger)
+            SettingRow(
+                str(R.string.reminders_exact),
+                subtitle = str(if (s.exactReminders && !canExact) R.string.reminders_exact_denied else R.string.reminders_exact_hint),
+                onClick = if (s.exactReminders && !canExact) openExact else null,
+            ) {
+                GlassSwitch(s.exactReminders, { v ->
+                    edit { it.copy(exactReminders = v) }
+                    // El permiso se concede en los ajustes del sistema; sin él, se usa la alarma inexacta.
+                    if (v && !Reminders.canExact()) openExact()
+                    CalendarApp.scope.launch { Reminders.reschedule() }
+                })
+            }
+            SettingRow(str(R.string.reminders_lock_screen), subtitle = str(R.string.reminders_lock_screen_hint)) {
+                GlassSwitch(s.remindersOnLockScreen, { v -> edit { it.copy(remindersOnLockScreen = v) } })
             }
         }
 

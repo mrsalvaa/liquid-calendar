@@ -25,6 +25,12 @@ data class AppSettings(
     val syncIntervalMinutes: Int = 60,
     /** Altura de una hora en las vistas de semana y día (dp); se cambia pellizcando. */
     val hourHeight: Int = 56,
+    /** Recordatorios con notificaciones locales. */
+    val remindersEnabled: Boolean = true,
+    /** Usar alarmas exactas (solo si Android lo permite: el usuario lo concede en los ajustes del sistema). */
+    val exactReminders: Boolean = false,
+    /** Mostrar el título y la hora en la pantalla de bloqueo. Por defecto, no. */
+    val remindersOnLockScreen: Boolean = false,
 ) {
     val glassStyle: GlassStyle get() = GlassStyle(themeMode, backgroundMode, colorSet, accentColor)
 

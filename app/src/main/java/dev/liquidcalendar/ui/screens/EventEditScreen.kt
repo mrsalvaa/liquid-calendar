@@ -42,6 +42,7 @@ import dev.liquidcalendar.core.ics.EventDraft
 import dev.liquidcalendar.data.CalendarInfo
 import dev.liquidcalendar.data.Events
 import dev.liquidcalendar.data.Repo
+import dev.liquidcalendar.notify.rememberNotificationPermission
 import dev.liquidcalendar.ui.glass.DialogSpec
 import dev.liquidcalendar.ui.glass.GlassButton
 import dev.liquidcalendar.ui.glass.GlassCard
@@ -116,6 +117,8 @@ fun EventEditScreen(target: EditTarget, clock: DeviceClock, weekStart: DayOfWeek
     var endTime by remember { mutableStateOf(initial.endTime) }
     var chosen by remember { mutableStateOf(existing?.calendar) }
     var alarms by remember { mutableStateOf(before?.alarms.orEmpty()) }
+    // Con recordatorios, se pide el permiso de notificaciones al guardar (si todavía no se dio).
+    val requestNotifications = rememberNotificationPermission()
     val isSeries = existing?.occurrence != null
     var error by remember { mutableStateOf<String?>(null) }
     // Si no se tocó la fecha ni la hora, se guarda exactamente el horario original (rearmarlo
@@ -238,6 +241,7 @@ fun EventEditScreen(target: EditTarget, clock: DeviceClock, weekStart: DayOfWeek
                 {
                     val c = calendar ?: return@GlassButton
                     val d = draft() ?: return@GlassButton
+                    if (d.alarms.isNotEmpty()) requestNotifications()
                     val occurrence = existing?.occurrence
                     if (existing != null && occurrence != null) {
                         // Serie: alcance y resumen antes de aplicar nada.
