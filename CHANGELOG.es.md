@@ -2,6 +2,11 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## Sin publicar
+
+### Novedades
+- Widget de agenda para la pantalla de inicio: hoy y los 13 días siguientes, agrupados por día, con la estética de la app (tema claro u oscuro, color de énfasis). Tocar un evento lo abre, y "+" crea uno para hoy.
+
 ## 1.0.0
 
 Primera versión.

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Colores del widget antes de su primera actualización y en la vista previa del selector
+     (tema liso). Después, el código los reemplaza por los del tema elegido en la app. -->
+<resources>
+    <color name="widget_surface">#B8F2F3F5</color>
+    <color name="widget_rim">#D9FFFFFF</color>
+    <color name="widget_glow">#401A73E8</color>
+    <color name="widget_pill">#EBFFFFFF</color>
+    <color name="widget_content">#FF111318</color>
+    <color name="widget_secondary">#94111318</color>
+    <color name="widget_accent">#FF1A73E8</color>
+    <color name="widget_on_accent">#FFFFFFFF</color>
+</resources>

@@ -2,6 +2,11 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
+## Unreleased
+
+### New
+- Agenda widget for the home screen: today and the next 13 days, grouped by day, with the app's look (light or dark theme, accent colour). Tap an event to open it, or "+" to create one for today.
+
 ## 1.0.0
 
 First release.

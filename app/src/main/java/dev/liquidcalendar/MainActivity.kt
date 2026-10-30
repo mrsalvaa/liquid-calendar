@@ -1,6 +1,10 @@
 package dev.liquidcalendar
 
+import android.content.Intent
 import android.os.Bundle
+import dev.liquidcalendar.data.Agenda
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.BackHandler
@@ -122,10 +126,18 @@ sealed interface Overlay {
     data class Import(val preview: ImportPreview) : Overlay
 }
 
+/** Lo que pidió el widget al abrir la app. */
+sealed interface OpenRequest {
+    data object NewEvent : OpenRequest
+    data class Event(val calendarId: Long, val uid: String, val key: String, val day: LocalDate) : OpenRequest
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        // Solo la primera vez: al recrear la actividad (p. ej. al girar) no se repite.
+        if (savedInstanceState == null) handle(intent)
         preferHighestRefreshRate()
         setContent {
             val settings by Stores.settings.state.collectAsStateWithLifecycle()
@@ -134,6 +146,38 @@ class MainActivity : ComponentActivity() {
                 App(settings.animatedBackground, settings.weekStart())
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handle(intent)
+    }
+
+    private fun handle(intent: Intent?) {
+        openRequests.value = when (intent?.action) {
+            ACTION_NEW_EVENT -> OpenRequest.NewEvent
+            ACTION_OPEN_EVENT -> {
+                val uid = intent.getStringExtra(EXTRA_UID)
+                val key = intent.getStringExtra(EXTRA_KEY)
+                val calendar = intent.getLongExtra(EXTRA_CALENDAR, -1)
+                val day = intent.getLongExtra(EXTRA_DAY, Long.MIN_VALUE)
+                if (uid == null || key == null || calendar < 0 || day == Long.MIN_VALUE) null
+                else OpenRequest.Event(calendar, uid, key, LocalDate.ofEpochDay(day))
+            }
+            else -> null
+        }
+    }
+
+    companion object {
+        const val ACTION_OPEN = "dev.liquidcalendar.OPEN"
+        const val ACTION_NEW_EVENT = "dev.liquidcalendar.NEW_EVENT"
+        const val ACTION_OPEN_EVENT = "dev.liquidcalendar.OPEN_EVENT"
+        const val EXTRA_CALENDAR = "calendar"
+        const val EXTRA_UID = "uid"
+        const val EXTRA_KEY = "key"
+        const val EXTRA_DAY = "day"
+
+        val openRequests = MutableStateFlow<OpenRequest?>(null)
     }
 }
 
@@ -164,6 +208,29 @@ private fun App(animated: Boolean, weekStart: DayOfWeek) {
         holder.removeState(key)
     }
     BackHandler(enabled = stack.isNotEmpty() && sheet == null && prompt == null && dialog == null) { pop() }
+
+    // Pedidos del widget: un evento (se busca entre las ocurrencias de ese día) o uno nuevo hoy.
+    LaunchedEffect(Unit) {
+        MainActivity.openRequests.filterNotNull().collect { request ->
+            MainActivity.openRequests.value = null
+            val target = when (request) {
+                OpenRequest.NewEvent -> Overlay.Edit(EditTarget.New(clock.today))
+                is OpenRequest.Event -> {
+                    val zone = clock.zone
+                    Agenda.load(request.day.atStartOfDay(zone).toInstant(), request.day.plusDays(1).atStartOfDay(zone).toInstant(), zone)
+                        .firstOrNull { it.calendar.id == request.calendarId && it.occurrence.uid == request.uid && it.occurrence.key == request.key }
+                        ?.let {
+                            selectedDay = request.day.toEpochDay()
+                            Overlay.Event(it)
+                        }
+                }
+            }
+            if (target != null) {
+                while (stack.isNotEmpty()) pop()
+                push(target)
+            }
+        }
+    }
     BackHandler(enabled = stack.isEmpty() && tab != TAB_MONTH) { tab = TAB_MONTH }
 
     val insets = WindowInsets.safeDrawing.asPaddingValues()

@@ -256,9 +256,8 @@ fun isDarkTheme(themeMode: Int): Boolean = when (themeMode) {
     else -> isSystemInDarkTheme()
 }
 
-@Composable
-fun GlassTheme(settings: GlassStyle, content: @Composable () -> Unit) {
-    val dark = isDarkTheme(settings.themeMode)
+/** Colores del tema para [settings] en modo claro u oscuro (también los usa el widget). */
+fun glassPalette(settings: GlassStyle, dark: Boolean): GlassPalette {
     val base = if (dark) DarkGlass else LightGlass
     val p = if (settings.backgroundMode == 2) {
         val plain = if (dark) PlainDarkGlass else PlainLightGlass
@@ -275,6 +274,13 @@ fun GlassTheme(settings: GlassStyle, content: @Composable () -> Unit) {
             onAccent = onAccentGlass(accent, base.base),
         )
     }
+    return p.copy(accentFg = foregroundAccent(p.accent, dark))
+}
+
+@Composable
+fun GlassTheme(settings: GlassStyle, content: @Composable () -> Unit) {
+    val dark = isDarkTheme(settings.themeMode)
+    val p = glassPalette(settings, dark)
     val scheme = if (dark) {
         darkColorScheme(
             primary = p.accent, onPrimary = p.onAccent,
@@ -290,10 +296,9 @@ fun GlassTheme(settings: GlassStyle, content: @Composable () -> Unit) {
             error = p.danger,
         )
     }
-    val palette = p.copy(accentFg = foregroundAccent(p.accent, dark))
     MaterialTheme(colorScheme = scheme) {
         CompositionLocalProvider(
-            LocalGlass provides palette,
+            LocalGlass provides p,
             LocalContentColor provides p.content,
             LocalReducedMotion provides rememberReducedMotion(),
             content = content,

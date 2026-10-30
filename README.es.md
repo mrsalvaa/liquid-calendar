@@ -30,6 +30,7 @@ suscripciones que agregues vos. Licencia GPL-3.0.
   <img src="docs/screenshots/borrar-calendario.png" width="200" alt="Borrar un calendario">
   <img src="docs/screenshots/suscripcion.png" width="200" alt="Suscripción">
   <img src="docs/screenshots/importar.png" width="200" alt="Importar">
+  <img src="docs/screenshots/widget.png" width="200" alt="Widget de agenda">
 </p>
 
 Las capturas son de datos de prueba inventados (`scripts/demo-data.py`) en un Radicale local.
@@ -53,6 +54,11 @@ El primer día de la semana se puede elegir; las fechas se muestran como día/me
   el nombre del calendario; se muestra cuántos eventos se pierden y se ofrece exportar antes.
 - Si un calendario desaparece del servidor no se borra nada: elegís conservarlo en el
   dispositivo, exportarlo o descartarlo.
+
+**Widget de agenda**: los eventos de hoy y de los 13 días siguientes en la pantalla de inicio,
+agrupados por día, con la estética de la app (tema, estilo de fondo y color de énfasis). Tocar un
+evento lo abre, y "+" crea uno para hoy. Se actualiza solo después de cada cambio o
+sincronización.
 
 **Sincronización**
 - Funciona sin conexión: los cambios esperan en una cola y se suben después. Cada subida es
@@ -265,6 +271,7 @@ app/src/main/java/dev/liquidcalendar/
 ├── data/       Caché SQLite, ajustes, contraseña cifrada con el Keystore
 ├── sync/       Motor de sincronización, WorkManager, operaciones de calendarios, suscripciones
 ├── notify/     Recordatorios
+├── widget/     Widget de agenda
 ├── ui/glass/   Componentes de cristal líquido
 └── ui/screens/ Pantallas
 ```

@@ -2,6 +2,24 @@
 
 Lo que todavía no hace la app o hace de forma parcial. Se actualiza en cada etapa.
 
+## Widget de agenda
+
+- Sin dependencias ni permisos nuevos: `RemoteViews` con `RemoteCollectionItems` (Android 12+).
+- Toma los colores del tema de la app. Con "Sistema", Android elige claro u oscuro al dibujarlo.
+- Se actualiza al cambiar los datos o la apariencia, al cambiar la hora o la zona, y cada 30 min
+  (para correr el día y sacar lo que ya terminó; es un cálculo local, sin red).
+- Probado en el celu (solo .debug, Radicale local, datos inventados): vista previa en el
+  selector, alta en la pantalla de inicio, "+" abre un evento nuevo para hoy y al guardarlo el
+  widget lo muestra bajo "Hoy", tocar una ocurrencia de una serie abre su detalle, tema claro
+  forzado. La .debug se desinstaló al final.
+
+| # | Limitación | Plan |
+|---|---|---|
+| W1 | Un widget no puede desenfocar ni refractar lo que tiene detrás: el cristal es una superficie translúcida con borde de luz y un brillo del color de énfasis. El fondo "En movimiento" no se anima. | Por diseño (límite de Android) |
+| W2 | Muestra los títulos de los eventos en la pantalla de inicio (no en la de bloqueo). | Por diseño |
+| W3 | Muestra hasta 200 filas (días y eventos). | Por diseño |
+| W4 | La captura del README es la vista previa del selector (datos de ejemplo), para no mostrar el fondo de pantalla del celu a través del cristal. | Por diseño |
+
 ## Versión 1.0.0 (etapa 7)
 
 - Release firmada con una clave propia de Calendar (en `~/.android-keys/`, fuera del repo). El
