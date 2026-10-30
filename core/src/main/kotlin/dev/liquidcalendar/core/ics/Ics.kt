@@ -59,6 +59,8 @@ class EventComponent internal constructor(
     internal val rdates: List<Temporal>,
     internal val exdates: List<Temporal>,
     internal val recurrenceId: Temporal?,
+    /** Zona propia del archivo (TZID no IANA): sus horas locales se convierten con ella. */
+    internal val localZone: FileZone? = null,
 ) {
     val allDay: Boolean get() = start is LocalDate
 }
@@ -69,7 +71,11 @@ internal sealed interface Length {
 }
 
 /** Todos los VEVENT de un recurso iCalendar (la serie y sus excepciones comparten UID). */
-class IcsResource internal constructor(val components: List<EventComponent>) {
+class IcsResource internal constructor(
+    val components: List<EventComponent>,
+    /** Zonas definidas solo en el archivo, por TZID. */
+    val fileZones: Map<String, FileZone> = emptyMap(),
+) {
     val uid: String? get() = components.firstOrNull()?.info?.uid
 }
 
@@ -95,7 +101,64 @@ object Ics {
         } catch (e: StackOverflowError) {
             throw IcsException("iCalendar ilegible")
         }
-        return IcsResource(calendar.getComponents<VEvent>(Component.VEVENT).mapNotNull(::component))
+        val zones = fileZones(calendar)
+        return IcsResource(calendar.getComponents<VEvent>(Component.VEVENT).mapNotNull { component(it, zones) }, zones)
+    }
+
+    /** Las VTIMEZONE cuyo TZID no es una zona IANA, para resolver sus horas sin ayuda de la plataforma. */
+    private fun fileZones(calendar: net.fortuna.ical4j.model.Calendar): Map<String, FileZone> =
+        calendar.getComponents<net.fortuna.ical4j.model.component.VTimeZone>(Component.VTIMEZONE).mapNotNull { vtz ->
+            try {
+                val tzid = vtz.getProperty<Property>(Property.TZID).orElse(null)?.value ?: return@mapNotNull null
+                if (iana(tzid) != null) return@mapNotNull null
+                val observances = vtz.observances.mapNotNull { o ->
+                    val start = o.getProperty<Property>(Property.DTSTART).orElse(null)?.value?.let(::localDateTime) ?: return@mapNotNull null
+                    val from = o.getProperty<Property>(Property.TZOFFSETFROM).orElse(null)?.value?.let(::zoneOffset) ?: return@mapNotNull null
+                    val to = o.getProperty<Property>(Property.TZOFFSETTO).orElse(null)?.value?.let(::zoneOffset) ?: return@mapNotNull null
+                    val rule = o.getProperty<Property>(Property.RRULE).orElse(null)?.value?.let { Recur<java.time.LocalDateTime>(it) }
+                    val rdates = o.getProperties<Property>(Property.RDATE).flatMap { it.value.split(',') }.mapNotNull(::localDateTime)
+                    FileZone.Observance(start, from, to, rule, rdates)
+                }
+                if (observances.isEmpty()) null else tzid to FileZone(tzid, observances)
+            } catch (e: Exception) {
+                null
+            }
+        }.toMap()
+
+    private fun iana(tzid: String): ZoneId? = try {
+        ZoneId.of(tzid)
+    } catch (e: Exception) {
+        null
+    }
+
+    private val RAW_LOCAL = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
+
+    private fun localDateTime(v: String): java.time.LocalDateTime? = try {
+        java.time.LocalDateTime.parse(v.trim().removeSuffix("Z"), RAW_LOCAL)
+    } catch (e: Exception) {
+        null
+    }
+
+    private fun zoneOffset(v: String): ZoneOffset? = try {
+        val t = v.trim()
+        val sign = if (t.startsWith("-")) -1 else 1
+        val digits = t.trimStart('+', '-')
+        val h = digits.substring(0, 2).toInt()
+        val m = digits.substring(2, 4).toInt()
+        val s = if (digits.length >= 6) digits.substring(4, 6).toInt() else 0
+        ZoneOffset.ofTotalSeconds(sign * (h * 3600 + m * 60 + s))
+    } catch (e: Exception) {
+        null
+    }
+
+    /**
+     * Fecha de una propiedad con TZID que no es IANA: la hora local escrita en el archivo (y la
+     * zona propia, si el archivo la define; si no, queda como hora flotante).
+     */
+    private fun foreignLocal(p: Property): java.time.LocalDateTime? {
+        val tzid = p.getParameter<Parameter>(Parameter.TZID).orElse(null)?.value ?: return null
+        if (iana(tzid) != null) return null
+        return localDateTime(p.value)
     }
 
     /** UID del primer evento, para guardar el recurso sin interpretarlo entero. */
@@ -105,11 +168,12 @@ object Ics {
         null
     }
 
-    private fun component(event: VEvent): EventComponent? = try {
+    private fun component(event: VEvent, zones: Map<String, FileZone>): EventComponent? = try {
         val uid = event.prop(Property.UID)?.value?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         val startProp = event.prop(Property.DTSTART) ?: return null
-        val start = normalized(startProp) ?: return null
-        val end = event.prop(Property.DTEND)?.let(::normalized)
+        val start = foreignLocal(startProp) ?: normalized(startProp) ?: return null
+        val localZone = startProp.getParameter<Parameter>(Parameter.TZID).orElse(null)?.value?.let { zones[it] }
+        val end = event.prop(Property.DTEND)?.let { foreignLocal(it) ?: normalized(it) }
         val length = when {
             start is LocalDate -> Length.Days(
                 ((end as? LocalDate)?.let { ChronoUnit.DAYS.between(start, it) }
@@ -122,7 +186,7 @@ object Ics {
         val rrules = event.getProperties<RRule<Temporal>>(Property.RRULE).map { it.recur as Recur<Temporal> }
         val rdates = event.dateList(Property.RDATE)
         val exdates = event.dateList(Property.EXDATE)
-        val recurrenceId = event.prop(Property.RECURRENCE_ID)?.let(::normalized)
+        val recurrenceId = event.prop(Property.RECURRENCE_ID)?.let { foreignLocal(it) ?: normalized(it) }
         EventComponent(
             info = EventInfo(
                 uid = uid,
@@ -140,6 +204,7 @@ object Ics {
             rdates = rdates,
             exdates = exdates,
             recurrenceId = recurrenceId,
+            localZone = localZone,
         )
     } catch (e: Exception) {
         // Un VEVENT raro (fechas imposibles, RRULE inválida) se salta; el resto del archivo sigue.
@@ -169,9 +234,14 @@ object Ics {
         getProperties<Property>(name).flatMap { p ->
             try {
                 @Suppress("UNCHECKED_CAST")
-                val list = (p as DateListProperty<Temporal>).dates
-                val zone = systemZone(p)
-                list.mapNotNull { normalize(it, zone) }
+                val tzid = p.getParameter<Parameter>(Parameter.TZID).orElse(null)?.value
+                if (tzid != null && iana(tzid) == null) {
+                    p.value.split(',').mapNotNull(::localDateTime)
+                } else {
+                    val list = (p as DateListProperty<Temporal>).dates
+                    val zone = systemZone(p)
+                    list.mapNotNull { normalize(it, zone) }
+                }
             } catch (e: Exception) {
                 emptyList() // RDATE con períodos u otros valores que no se usan
             }

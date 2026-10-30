@@ -72,7 +72,18 @@ class IcsTest {
                 "BEGIN:VEVENT", "UID:z", "DTSTAMP:20261001T000000Z", "DTSTART;TZID=Mi Zona:20261030T100000", "END:VEVENT",
             ),
         ).single()
-        assertEquals("2026-10-30T13:00:00Z", (e.start as EventTime.At).toInstant(ZoneId.of("UTC")).toString())
+        assertEquals("z", e.uid)
+        val resource = Ics.parseResource(
+            cal(
+                "BEGIN:VTIMEZONE", "TZID:Mi Zona", "BEGIN:STANDARD", "DTSTART:19700101T000000",
+                "TZOFFSETFROM:-0300", "TZOFFSETTO:-0300", "TZNAME:ART", "END:STANDARD", "END:VTIMEZONE",
+                "BEGIN:VEVENT", "UID:z", "DTSTAMP:20261001T000000Z", "DTSTART;TZID=Mi Zona:20261030T100000", "END:VEVENT",
+            ),
+        )
+        // Las vistas convierten con la zona del archivo (no con la del dispositivo).
+        val utc = ZoneId.of("UTC")
+        val t = Recurrence.expand(resource, java.time.Instant.parse("2026-10-30T00:00:00Z"), java.time.Instant.parse("2026-10-31T00:00:00Z"), utc).single().time as When.Timed
+        assertEquals("2026-10-30T13:00:00Z", t.start.toString())
     }
 
     @Test

@@ -43,12 +43,20 @@ object IcsWriter {
     /** UID nuevo y único: aleatorio, sin datos del dispositivo ni del usuario. */
     fun newUid(): String = "${UUID.randomUUID()}@liquidcalendar"
 
-    fun create(uid: String, draft: EventDraft, now: Instant = Instant.now()): String {
+    /**
+     * [zone]: zona del dispositivo. Los eventos con hora se escriben con TZID y su VTIMEZONE; sin
+     * zona (null), en UTC.
+     */
+    fun create(uid: String, draft: EventDraft, now: Instant = Instant.now(), zone: ZoneId? = null): String {
         val lines = mutableListOf(
             "BEGIN:VCALENDAR",
             "VERSION:2.0",
             "PRODID:$PRODID",
             "CALSCALE:GREGORIAN",
+        )
+        val target: WriteZone = if (zone != null && draft.time is DraftTime.Timed) WriteZone.Iana(zone) else WriteZone.Utc
+        if (target is WriteZone.Iana) lines += VTimezones.of(target.zone, now)
+        lines += listOf(
             "BEGIN:VEVENT",
             "UID:${text(uid)}",
             "DTSTAMP:${utc(now)}",
@@ -56,7 +64,7 @@ object IcsWriter {
             "LAST-MODIFIED:${utc(now)}",
             "SEQUENCE:0",
         )
-        lines += timeLines(draft.time, keepZone = null)
+        lines += timeLines(draft.time, target)
         lines += "SUMMARY:${text(draft.summary)}"
         draft.location?.takeIf { it.isNotBlank() }?.let { lines += "LOCATION:${text(it)}" }
         draft.description?.takeIf { it.isNotBlank() }?.let { lines += "DESCRIPTION:${text(it)}" }
@@ -69,7 +77,12 @@ object IcsWriter {
      * reescriben los campos que cambiaron respecto de [before]; DTSTAMP y LAST-MODIFIED siempre,
      * y SEQUENCE sube si cambió el horario (RFC 5545).
      */
-    fun patch(original: String, uid: String, before: EventDraft, draft: EventDraft, now: Instant = Instant.now()): String {
+    fun patch(original: String, uid: String, before: EventDraft, draft: EventDraft, now: Instant = Instant.now(), zone: ZoneId? = null): String {
+        val fileZones = try {
+            Ics.parseResource(original).fileZones
+        } catch (e: IcsException) {
+            emptyMap()
+        }
         val physical = original.replace("\r\n", "\n").replace('\r', '\n').split('\n').let { if (it.lastOrNull() == "") it.dropLast(1) else it }
         // Líneas lógicas (desplegadas), cada una con sus líneas físicas originales.
         val logical = mutableListOf<MutableList<String>>()
@@ -114,6 +127,8 @@ object IcsWriter {
         if (start < 0 || end < 0) throw IcsException("No está el evento a editar")
 
         val timeChanged = before.time != draft.time
+        // Dónde escribir el horario nuevo: se decide al ver el DTSTART original (más abajo).
+        var target: WriteZone = WriteZone.Utc
         val replace = buildSet {
             if (before.summary != draft.summary) add("SUMMARY")
             if (before.location != draft.location) add("LOCATION")
@@ -129,13 +144,13 @@ object IcsWriter {
         var depth = 0
         var insertAt = -1
         var oldSequence = 0
-        var keepZone: ZoneId? = null
+        var startLine: String? = null
         for (l in body) {
             val u = unfolded(l)
             if (depth == 0) {
                 val name = nameOf(l)
                 if (name == "SEQUENCE") oldSequence = u.substringAfter(':').trim().toIntOrNull() ?: 0
-                if (name == "DTSTART") keepZone = tzidOf(u)
+                if (name == "DTSTART") startLine = u
                 if (name in replace) {
                     if (insertAt < 0) insertAt = kept.size
                     continue
@@ -145,8 +160,9 @@ object IcsWriter {
             if (u.startsWith("END:", ignoreCase = true)) depth--
             kept += l
         }
+        target = writeZoneFor(startLine, fileZones, zone, draft.time)
         val fresh = buildList {
-            if (timeChanged) addAll(timeLines(draft.time, keepZone))
+            if (timeChanged) addAll(timeLines(draft.time, target))
             if ("SUMMARY" in replace) add("SUMMARY:${text(draft.summary)}")
             if ("LOCATION" in replace) draft.location?.takeIf { it.isNotBlank() }?.let { add("LOCATION:${text(it)}") }
             if ("DESCRIPTION" in replace) draft.description?.takeIf { it.isNotBlank() }?.let { add("DESCRIPTION:${text(it)}") }
@@ -158,7 +174,13 @@ object IcsWriter {
         val at = if (insertAt >= 0) insertAt else kept.indexOfFirst { unfolded(it).startsWith("BEGIN:", ignoreCase = true) }.let { if (it < 0) kept.size else it }
         kept.addAll(at, fresh)
 
-        val out = logical.subList(0, start + 1) + kept + logical.subList(end, logical.size)
+        var out = logical.subList(0, start + 1) + kept + logical.subList(end, logical.size)
+        // Una zona IANA nueva para el archivo va con su VTIMEZONE (antes del primer VEVENT).
+        val t = target
+        if (timeChanged && t is WriteZone.Iana && out.none { unfolded(it).equals("TZID:${t.zone.id}", ignoreCase = true) }) {
+            val at = out.indexOfFirst { unfolded(it).equals("BEGIN:VEVENT", ignoreCase = true) }
+            out = out.subList(0, at) + VTimezones.of(t.zone, now).map { mutableListOf(it) } + out.subList(at, out.size)
+        }
         return out.flatMap { group -> group.flatMap { it.split('\n') } }.joinToString("") { it + CRLF }
     }
 
@@ -173,7 +195,7 @@ object IcsWriter {
             else -> {
                 val startInstant = when (s) {
                     is ZonedDateTime -> s.toInstant()
-                    else -> (s as java.time.LocalDateTime).atZone(zone).toInstant()
+                    else -> (s as java.time.LocalDateTime).let { c.localZone?.toInstant(it) ?: it.atZone(zone).toInstant() }
                 }
                 val length = (c.length as? Length.Exact)?.duration ?: java.time.Duration.ZERO
                 DraftTime.Timed(startInstant, startInstant.plus(length))
@@ -188,32 +210,59 @@ object IcsWriter {
 
     // --- Fechas ---
 
+    /** Cómo se escribe un horario con hora. */
+    internal sealed interface WriteZone {
+        data class Iana(val zone: ZoneId) : WriteZone
+        data class File(val zone: FileZone) : WriteZone
+
+        /** Sin zona: vale la hora local de quien lo mire ([device] solo sirve para calcularla). */
+        data class Floating(val device: ZoneId) : WriteZone
+        data object Utc : WriteZone
+    }
+
     /**
-     * Todo el día: VALUE=DATE y DTEND exclusivo. Con hora: en la zona IANA que ya tenía el evento
-     * ([keepZone], cuya VTIMEZONE ya está en el archivo) o, si no, en UTC: nunca una zona inventada.
+     * La zona que ya tenía el evento: IANA o propia del archivo se conservan, y una hora flotante
+     * sigue flotante. Si estaba en UTC o era de todo el día, pasa a la zona del dispositivo
+     * (con TZID y VTIMEZONE); sin zona del dispositivo, en UTC.
      */
-    private fun timeLines(time: DraftTime, keepZone: ZoneId?): List<String> = when (time) {
+    private fun writeZoneFor(startLine: String?, fileZones: Map<String, FileZone>, device: ZoneId?, time: DraftTime): WriteZone {
+        if (time !is DraftTime.Timed || startLine == null) return device?.let { WriteZone.Iana(it) } ?: WriteZone.Utc
+        val params = startLine.substringBefore(':').split(';').drop(1)
+        val tzid = params.firstOrNull { it.startsWith("TZID=", ignoreCase = true) }?.substringAfter('=')?.trim('"')
+        val isDate = params.any { it.equals("VALUE=DATE", ignoreCase = true) }
+        val value = startLine.substringAfter(':')
+        return when {
+            tzid != null -> try {
+                WriteZone.Iana(ZoneId.of(tzid))
+            } catch (e: Exception) {
+                fileZones[tzid]?.let { WriteZone.File(it) } ?: WriteZone.Floating(device ?: ZoneOffset.UTC)
+            }
+            isDate -> device?.let { WriteZone.Iana(it) } ?: WriteZone.Utc
+            value.endsWith("Z") -> device?.let { WriteZone.Iana(it) } ?: WriteZone.Utc
+            else -> WriteZone.Floating(device ?: ZoneOffset.UTC)
+        }
+    }
+
+    /** Todo el día: VALUE=DATE y DTEND exclusivo. Con hora: según [zone]. */
+    private fun timeLines(time: DraftTime, zone: WriteZone): List<String> = when (time) {
         is DraftTime.AllDay -> listOf(
             "DTSTART;VALUE=DATE:${DATE.format(time.first)}",
             "DTEND;VALUE=DATE:${DATE.format(time.lastInclusive.plusDays(1))}",
         )
-        is DraftTime.Timed -> if (keepZone != null) {
-            listOf(
-                "DTSTART;TZID=${keepZone.id}:${LOCAL.format(ZonedDateTime.ofInstant(time.start, keepZone))}",
-                "DTEND;TZID=${keepZone.id}:${LOCAL.format(ZonedDateTime.ofInstant(time.end, keepZone))}",
+        is DraftTime.Timed -> when (zone) {
+            is WriteZone.Iana -> listOf(
+                "DTSTART;TZID=${zone.zone.id}:${LOCAL.format(ZonedDateTime.ofInstant(time.start, zone.zone))}",
+                "DTEND;TZID=${zone.zone.id}:${LOCAL.format(ZonedDateTime.ofInstant(time.end, zone.zone))}",
             )
-        } else {
-            listOf("DTSTART:${utc(time.start)}", "DTEND:${utc(time.end)}")
-        }
-    }
-
-    private fun tzidOf(line: String): ZoneId? {
-        val params = line.substringBefore(':').split(';').drop(1)
-        val tzid = params.firstOrNull { it.startsWith("TZID=", ignoreCase = true) }?.substringAfter('=')?.trim('"') ?: return null
-        return try {
-            ZoneId.of(tzid)
-        } catch (e: Exception) {
-            null // zona propia del archivo: el nuevo horario se escribe en UTC
+            is WriteZone.File -> listOf(
+                "DTSTART;TZID=${zone.zone.tzid}:${LOCAL.format(zone.zone.toLocal(time.start))}",
+                "DTEND;TZID=${zone.zone.tzid}:${LOCAL.format(zone.zone.toLocal(time.end))}",
+            )
+            is WriteZone.Floating -> listOf(
+                "DTSTART:${LOCAL.format(java.time.LocalDateTime.ofInstant(time.start, zone.device))}",
+                "DTEND:${LOCAL.format(java.time.LocalDateTime.ofInstant(time.end, zone.device))}",
+            )
+            WriteZone.Utc -> listOf("DTSTART:${utc(time.start)}", "DTEND:${utc(time.end)}")
         }
     }
 

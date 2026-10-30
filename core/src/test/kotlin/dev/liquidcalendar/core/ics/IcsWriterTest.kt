@@ -142,7 +142,45 @@ class IcsWriterTest {
         val before = IcsWriter.draftOf(Ics.parseResource(original), "z", ba)!!
         val start = Instant.parse("2026-10-30T15:00:00Z")
         val edited = IcsWriter.patch(original, "z", before, before.copy(time = DraftTime.Timed(start, start.plusSeconds(3600))), now)
-        assertTrue("DTSTART:20261030T150000Z" in logical(edited))
+        // Se conserva la zona del archivo; 15:00 UTC con su desfase de -03:00 son las 12:00.
+        assertTrue("DTSTART;TZID=Hora de Mi Casa:20261030T120000" in logical(edited))
+        assertEquals(start, IcsWriter.draftOf(Ics.parseResource(edited), "z", ba)!!.time.let { (it as DraftTime.Timed).start })
+    }
+
+    @Test
+    fun newTimedEventsCarryTzidAndVtimezoneAndRoundTrip() {
+        for (zone in listOf(ZoneId.of("Europe/Madrid"), ZoneId.of("America/New_York"), ba)) {
+            // Incluye horas del día del cambio de horario de cada zona.
+            val locals = listOf(LocalDateTime.of(2026, 3, 29, 3, 30), LocalDateTime.of(2026, 10, 25, 1, 15), LocalDateTime.of(2026, 3, 8, 3, 0), LocalDateTime.of(2026, 11, 1, 0, 45), LocalDateTime.of(2026, 7, 1, 12, 0))
+            for (local in locals) {
+                val start = local.atZone(zone).toInstant()
+                val draft = EventDraft("x", null, null, DraftTime.Timed(start, start.plusSeconds(3600)))
+                val ics = IcsWriter.create("u", draft, now, zone)
+                assertTrue("DTSTART;TZID=${zone.id}:${local.atZone(zone).toLocalDateTime().toString().replace("-", "").replace(":", "").padEnd(15, '0')}" in logical(ics), "$zone $local")
+                assertEquals(1, logical(ics).count { it == "TZID:${zone.id}" })
+                // Leído desde otra zona, es el mismo instante.
+                for (device in zones) assertEquals(draft.time, IcsWriter.draftOf(Ics.parseResource(ics), "u", device)!!.time, "$zone $local ${device.id}")
+            }
+        }
+    }
+
+    @Test
+    fun floatingStaysFloatingAndUtcGainsTheDeviceZone() {
+        fun event(start: String) = listOf("BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//x//x//ES", "BEGIN:VEVENT", "UID:f", "DTSTAMP:20260101T000000Z", start, "DURATION:PT1H", "SUMMARY:x", "END:VEVENT", "END:VCALENDAR", "").joinToString("\r\n")
+        val floating = event("DTSTART:20261030T090000")
+        val before = IcsWriter.draftOf(Ics.parseResource(floating), "f", ba)!!
+        val later = (before.time as DraftTime.Timed).let { DraftTime.Timed(it.start.plusSeconds(3600), it.end.plusSeconds(3600)) }
+        val edited = IcsWriter.patch(floating, "f", before, before.copy(time = later), now, ba)
+        assertTrue("DTSTART:20261030T100000" in logical(edited))
+        assertTrue(logical(edited).none { it.startsWith("BEGIN:VTIMEZONE") })
+
+        val utc = event("DTSTART:20261030T120000Z")
+        val b2 = IcsWriter.draftOf(Ics.parseResource(utc), "f", ba)!!
+        val t2 = (b2.time as DraftTime.Timed).let { DraftTime.Timed(it.start.plusSeconds(1800), it.end.plusSeconds(1800)) }
+        val e2 = IcsWriter.patch(utc, "f", b2, b2.copy(time = t2), now, ba)
+        assertTrue("DTSTART;TZID=America/Argentina/Buenos_Aires:20261030T093000" in logical(e2))
+        assertEquals(1, logical(e2).count { it == "BEGIN:VTIMEZONE" })
+        assertEquals(t2, IcsWriter.draftOf(Ics.parseResource(e2), "f", ZoneId.of("Asia/Tokyo"))!!.time)
     }
 
     @Test

@@ -59,16 +59,17 @@ object Recurrence {
         val result = mutableListOf<Occurrence>()
         for (m in masters) {
             // Las ocurrencias reemplazadas por una excepción no se generan desde la serie.
-            val replaced = overrides.filter { it.info.uid == m.info.uid }.mapNotNull { it.recurrenceId }.map { identity(it, zone) }.toSet()
-            val excluded = m.exdates.map { identity(it, zone) }.toSet() + replaced
+            val fz = m.localZone
+            val replaced = overrides.filter { it.info.uid == m.info.uid }.mapNotNull { o -> o.recurrenceId?.let { identity(it, zone, o.localZone) } }.toSet()
+            val excluded = m.exdates.map { identity(it, zone, fz) }.toSet() + replaced
             for (start in starts(m, from, to, zone, fastForward)) {
-                if (identity(start, zone) in excluded) continue
-                val time = window(start, m.length, zone)
+                if (identity(start, zone, fz) in excluded) continue
+                val time = window(start, m.length, zone, fz)
                 if (overlaps(time, from, to, zone)) result += occurrence(m, time, start, zone, m.rrules.isNotEmpty() || m.rdates.isNotEmpty())
             }
         }
         for (o in overrides) {
-            val time = window(o.start, o.length, zone)
+            val time = window(o.start, o.length, zone, o.localZone)
             if (overlaps(time, from, to, zone)) result += occurrence(o, time, o.recurrenceId!!, zone, recurring = true)
         }
         return result.sortedWith(compareBy({ sortKey(it.time, zone) }, { it.summary }))
@@ -82,7 +83,7 @@ object Recurrence {
         var infinite = false
         val utc = ZoneId.of("UTC")
         for (c in resource.components) {
-            val s = approx(c.start, utc).minus(SLACK)
+            val s = approx(c.start, utc, c.localZone).minus(SLACK)
             if (start == null || s < start) start = s
             val lastStart: Temporal? = when {
                 c.recurrenceId != null || (c.rrules.isEmpty() && c.rdates.isEmpty()) -> c.start
@@ -92,11 +93,11 @@ object Recurrence {
                 }
                 else -> {
                     val fromRules = c.rrules.mapNotNull { r -> lastOf(r, c.start) }
-                    (fromRules + c.rdates + c.start).maxByOrNull { approx(it, utc) }
+                    (fromRules + c.rdates + c.start).maxByOrNull { approx(it, utc, c.localZone) }
                 }
             }
             if (lastStart != null) {
-                val e = approx(lastStart, utc).plus(lengthOf(c.length)).plus(SLACK)
+                val e = approx(lastStart, utc, c.localZone).plus(lengthOf(c.length)).plus(SLACK)
                 if (end == null || e > end) end = e
             }
         }
@@ -110,10 +111,11 @@ object Recurrence {
         // Una ocurrencia que empezó antes del rango puede seguir dentro: se amplía hacia atrás.
         val windowStart = from.minus(lengthOf(c.length)).minus(SLACK)
         val windowEnd = to.plus(SLACK)
-        val (a, b) = bounds(c.start, windowStart, windowEnd, zone)
+        val fz = c.localZone
+        val (a, b) = bounds(c.start, windowStart, windowEnd, zone, fz)
         val out = LinkedHashMap<Any, Temporal>()
         // El DTSTART es siempre la primera ocurrencia (RFC 5545), lo diga o no la regla.
-        if (inRange(c.start, windowStart, windowEnd, zone)) out[identity(c.start, zone)] = c.start
+        if (inRange(c.start, windowStart, windowEnd, zone, fz)) out[identity(c.start, zone, fz)] = c.start
         for (rule in c.rrules) {
             val dates = try {
                 val seed = if (fastForward) fastSeed(rule, c.start, a) else c.start
@@ -121,9 +123,9 @@ object Recurrence {
             } catch (e: Exception) {
                 emptyList()
             }
-            for (d in dates) out.putIfAbsent(identity(d, zone), d)
+            for (d in dates) out.putIfAbsent(identity(d, zone, fz), d)
         }
-        for (d in c.rdates) if (inRange(d, windowStart, windowEnd, zone)) out.putIfAbsent(identity(d, zone), d)
+        for (d in c.rdates) if (inRange(d, windowStart, windowEnd, zone, fz)) out.putIfAbsent(identity(d, zone, fz), d)
         return out.values.take(MAX_PER_SERIES)
     }
 
@@ -160,10 +162,10 @@ object Recurrence {
     }
 
     /** Extremos del rango expresados en el mismo tipo que el inicio de la serie. */
-    private fun bounds(seed: Temporal, from: Instant, to: Instant, zone: ZoneId): Pair<Temporal, Temporal> = when (seed) {
+    private fun bounds(seed: Temporal, from: Instant, to: Instant, zone: ZoneId, fz: FileZone? = null): Pair<Temporal, Temporal> = when (seed) {
         is LocalDate -> from.atZone(zone).toLocalDate().minusDays(1) to to.atZone(zone).toLocalDate().plusDays(1)
         is ZonedDateTime -> from.atZone(seed.zone) to to.atZone(seed.zone)
-        else -> from.atZone(zone).toLocalDateTime() to to.atZone(zone).toLocalDateTime()
+        else -> if (fz != null) fz.toLocal(from) to fz.toLocal(to) else from.atZone(zone).toLocalDateTime() to to.atZone(zone).toLocalDateTime()
     }
 
     private fun lastOf(rule: Recur<Temporal>, seed: Temporal): Temporal? = try {
@@ -179,10 +181,10 @@ object Recurrence {
 
     // --- Conversión de fechas ---
 
-    private fun window(start: Temporal, length: Length, zone: ZoneId): When = when (start) {
+    private fun window(start: Temporal, length: Length, zone: ZoneId, fz: FileZone? = null): When = when (start) {
         is LocalDate -> When.AllDay(start, start.plusDays((length as? Length.Days)?.days ?: 1))
         is ZonedDateTime -> start.toInstant().let { When.Timed(it, it.plus(lengthOf(length))) }
-        else -> (start as LocalDateTime).atZone(zone).toInstant().let { When.Timed(it, it.plus(lengthOf(length))) }
+        else -> localInstant(start as LocalDateTime, zone, fz).let { When.Timed(it, it.plus(lengthOf(length))) }
     }
 
     private fun lengthOf(length: Length): Duration = when (length) {
@@ -201,37 +203,40 @@ object Recurrence {
         }
     }
 
-    private fun inRange(t: Temporal, from: Instant, to: Instant, zone: ZoneId): Boolean {
-        val i = approx(t, zone)
+    private fun inRange(t: Temporal, from: Instant, to: Instant, zone: ZoneId, fz: FileZone? = null): Boolean {
+        val i = approx(t, zone, fz)
         return i >= from && i < to
     }
 
     /** Instante aproximado (las fechas sin zona se toman en [zone]). */
-    private fun approx(t: Temporal, zone: ZoneId): Instant = when (t) {
+    private fun approx(t: Temporal, zone: ZoneId, fz: FileZone? = null): Instant = when (t) {
         is LocalDate -> t.atStartOfDay(zone).toInstant()
         is ZonedDateTime -> t.toInstant()
-        else -> (t as LocalDateTime).atZone(zone).toInstant()
+        else -> localInstant(t as LocalDateTime, zone, fz)
     }
 
     /** Para comparar ocurrencias (EXDATE, RECURRENCE-ID) sin depender de la zona en que se escribió. */
-    private fun identity(t: Temporal, zone: ZoneId): Any = when (t) {
+    private fun identity(t: Temporal, zone: ZoneId, fz: FileZone? = null): Any = when (t) {
         is LocalDate -> t
         is ZonedDateTime -> t.toInstant()
-        else -> (t as LocalDateTime).atZone(zone).toInstant()
+        else -> localInstant(t as LocalDateTime, zone, fz)
     }
+
+    /** Hora local → instante: con la zona propia del archivo si la hay; si no (flotante), la del dispositivo. */
+    private fun localInstant(t: LocalDateTime, zone: ZoneId, fz: FileZone?): Instant = fz?.toInstant(t) ?: t.atZone(zone).toInstant()
 
     private fun sortKey(time: When, zone: ZoneId): Instant = when (time) {
         is When.AllDay -> time.first.atStartOfDay(zone).toInstant()
         is When.Timed -> time.start
     }
 
-    private fun occurrence(c: EventComponent, time: When, originalStart: Temporal, zone: ZoneId, recurring: Boolean) = Occurrence(
+    private fun occurrence(c: EventComponent, time: When, originalStart: Temporal, zone: ZoneId, recurring: Boolean, fz: FileZone? = c.localZone) = Occurrence(
         uid = c.info.uid,
         summary = c.info.summary,
         location = c.info.location,
         description = c.info.description,
         time = time,
         recurring = recurring,
-        key = "${c.info.uid}|${identity(originalStart, zone)}",
+        key = "${c.info.uid}|${identity(originalStart, zone, fz)}",
     )
 }
