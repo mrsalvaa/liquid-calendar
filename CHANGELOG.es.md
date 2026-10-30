@@ -2,7 +2,7 @@
 
 [English](CHANGELOG.md) | **Español**
 
-## Sin publicar
+## 1.1.1
 
 ### Mejoras
 - Pellizcar en semana y día ya no salta cuando los dedos se cruzan: se queda en el tamaño mínimo. La altura sigue la distancia entre los dedos desde el comienzo del gesto.

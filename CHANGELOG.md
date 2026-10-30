@@ -2,7 +2,7 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
-## Unreleased
+## 1.1.1
 
 ### Improved
 - Pinching in week and day views no longer jumps when the fingers cross: it stays at the smallest size. The height follows the distance between your fingers since the start of the gesture.
