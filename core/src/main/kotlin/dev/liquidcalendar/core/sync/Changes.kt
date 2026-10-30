@@ -34,6 +34,11 @@ data class PendingChange(
     /** Versión del servidor en un conflicto (null = el servidor ya no lo tiene). */
     val serverIcs: String? = null,
     val serverEtag: String? = null,
+    /**
+     * Cambio que tiene que subirse antes que este (la serie cortada antes que la serie nueva de
+     * "esta y las siguientes"): mientras siga en la cola, este espera, aunque aquel quede en conflicto.
+     */
+    val dependsOn: Long? = null,
 )
 
 /**
@@ -68,6 +73,9 @@ interface ChangeStore {
     fun conflict(change: PendingChange, serverIcs: String?, serverEtag: String?)
 
     fun failed(change: PendingChange, error: DavException)
+
+    /** Si ese cambio todavía no se subió (en cola, en conflicto o fallido). */
+    fun pending(id: Long): Boolean
 }
 
 /**
@@ -80,6 +88,8 @@ class Pusher(private val dav: DavClient) {
     fun push(store: ChangeStore): Int {
         var sent = 0
         for (c in store.queued()) {
+            // Depende de otro cambio que todavía no llegó al servidor: espera (no se pierde).
+            if (c.dependsOn != null && store.pending(c.dependsOn)) continue
             val url = dav.url(c.url)
             try {
                 val etag = when (c.kind) {

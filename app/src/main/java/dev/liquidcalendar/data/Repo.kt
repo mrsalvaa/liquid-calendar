@@ -329,6 +329,7 @@ object Repo {
             error = str("error"),
             serverIcs = str("server_ics"),
             serverEtag = str("server_etag"),
+            dependsOn = long("depends_on"),
         ),
         calendarId = long("calendar_id")!!,
         summary = str("summary"),
@@ -352,14 +353,16 @@ object Repo {
      * Agrega un cambio a la cola, combinándolo con uno anterior del mismo evento que todavía no
      * salió (crear + editar = crear con lo último, crear + borrar = nada, etc.).
      */
-    fun enqueue(calendarId: Long, change: PendingChange, summary: String?, originalIcs: String? = null, originalEtag: String? = null) {
+    /** Devuelve el id del cambio en la cola (null si se anuló con uno anterior). */
+    fun enqueue(calendarId: Long, change: PendingChange, summary: String?, originalIcs: String? = null, originalEtag: String? = null): Long? {
+        var id: Long? = null
         db.writableDatabase.transaction {
             val previous = rawQuery(
                 "SELECT ch.*, c.url AS calendar_url FROM change ch JOIN calendar c ON c.id = ch.calendar_id WHERE ch.calendar_id = ? AND ch.uid = ? AND ch.state = 'QUEUED' ORDER BY ch.id DESC LIMIT 1",
                 arrayOf(calendarId.toString(), change.uid),
             ).use { c -> if (c.moveToFirst()) c.change() else null }
             if (previous == null) {
-                insertOrThrow("change", null, changeValues(calendarId, change, summary).apply {
+                id = insertOrThrow("change", null, changeValues(calendarId, change, summary).apply {
                     put("created_at", System.currentTimeMillis())
                     // La versión de antes del primer cambio: se conserva aunque se encolen más cambios.
                     if (originalIcs != null) put("original_ics", originalIcs)
@@ -373,10 +376,12 @@ object Repo {
                     delete("event", "calendar_id = ? AND uid = ?", arrayOf(calendarId.toString(), change.uid))
                 } else {
                     update("change", changeValues(calendarId, merged, summary), "id = ?", arrayOf(previous.change.id.toString()))
+                    id = previous.change.id
                 }
             }
         }
         changed()
+        return id
     }
 
     private fun changeValues(calendarId: Long, c: PendingChange, summary: String?) = ContentValues().apply {
@@ -391,6 +396,7 @@ object Repo {
         if (c.serverIcs != null) put("server_ics", c.serverIcs) else putNull("server_ics")
         if (c.serverEtag != null) put("server_etag", c.serverEtag) else putNull("server_etag")
         if (summary != null) put("summary", summary) else putNull("summary")
+        if (c.dependsOn != null) put("depends_on", c.dependsOn) else putNull("depends_on")
     }
 
     /** La próxima sincronización vuelve a comparar todos los eventos de ese calendario. */
@@ -431,6 +437,9 @@ object Repo {
             changed()
         }
 
+        override fun pending(id: Long): Boolean =
+            db.readableDatabase.rawQuery("SELECT 1 FROM change WHERE id = ?", arrayOf(id.toString())).use { it.moveToFirst() }
+
         override fun failed(change: PendingChange, error: dev.liquidcalendar.core.dav.DavException) {
             db.writableDatabase.update("change", ContentValues().apply {
                 put("state", ChangeState.FAILED.name)
@@ -445,6 +454,8 @@ object Repo {
      * se borra para que la próxima sincronización traiga la versión del servidor.
      */
     fun discard(changeId: Long) {
+        // Lo que dependía de este cambio (la serie nueva de un corte) se descarta con él.
+        dependents(changeId).forEach { discard(it) }
         db.writableDatabase.transaction {
             val row = rawQuery("$CHANGE_SELECT WHERE ch.id = ?", arrayOf(changeId.toString())).use { c -> if (c.moveToFirst()) c.change() else null } ?: return@transaction
             delete("change", "id = ?", arrayOf(changeId.toString()))
@@ -468,6 +479,11 @@ object Repo {
         }
         changed()
     }
+
+    private fun dependents(changeId: Long): List<Long> =
+        db.readableDatabase.rawQuery("SELECT id FROM change WHERE depends_on = ?", arrayOf(changeId.toString())).use { c ->
+            buildList { while (c.moveToNext()) add(c.getLong(0)) }
+        }
 
     /** Conflicto: quedarse con la versión del celu (se vuelve a subir sobre la del servidor). */
     fun keepMine(changeId: Long) {
@@ -498,6 +514,8 @@ object Repo {
 
     /** Conflicto: quedarse con la versión del servidor (se descarta el cambio del celu). */
     fun keepServer(changeId: Long) {
+        // Gana la versión del servidor: lo que dependía de este cambio ya no tiene sentido.
+        dependents(changeId).forEach { discard(it) }
         db.writableDatabase.transaction {
             val row = rawQuery("$CHANGE_SELECT WHERE ch.id = ?", arrayOf(changeId.toString())).use { c -> if (c.moveToFirst()) c.change() else null } ?: return@transaction
             val c = row.change

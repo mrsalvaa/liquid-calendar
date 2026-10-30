@@ -33,6 +33,8 @@ class MemoryStore(changes: List<PendingChange>) : ChangeStore {
         replace(change.copy(state = ChangeState.FAILED, error = error.code))
     }
 
+    override fun pending(id: Long) = all.any { it.id == id }
+
     private fun replace(c: PendingChange) {
         all[all.indexOfFirst { it.id == c.id }] = c
     }
@@ -133,6 +135,22 @@ class PusherTest {
         server.enqueue(MockResponse.Builder().code(404).build())
         val store = MemoryStore(listOf(change(1, ChangeKind.DELETE)))
         assertEquals(1, pusher().push(store))
+    }
+
+    @Test
+    fun aDependentChangeWaitsWhileItsDependencyIsInConflict() {
+        // La serie cortada (1) da 412: la serie nueva (2) no se sube, queda en cola.
+        server.enqueue(MockResponse.Builder().code(412).build())
+        server.enqueue(MockResponse.Builder().code(200).addHeader("ETag", "\"srv\"").body("SERVIDOR").build())
+        val store = MemoryStore(listOf(change(1, ChangeKind.UPDATE), change(2, ChangeKind.CREATE).copy(dependsOn = 1)))
+        assertEquals(0, pusher().push(store))
+        assertEquals(2, server.requestCount) // el PUT del corte y el GET de la versión del servidor; nada más
+        assertEquals(ChangeState.QUEUED, store.all.single { it.id == 2L }.state)
+        // Resuelto el conflicto ("la mía"), la siguiente pasada sube las dos en orden.
+        store.all[store.all.indexOfFirst { it.id == 1L }] = store.all.single { it.id == 1L }.copy(state = ChangeState.QUEUED, baseEtag = "\"srv\"")
+        server.enqueue(ok("\"a\""))
+        server.enqueue(ok("\"b\""))
+        assertEquals(2, pusher().push(store))
     }
 
     @Test

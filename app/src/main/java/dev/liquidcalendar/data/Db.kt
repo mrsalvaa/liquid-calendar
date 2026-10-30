@@ -72,6 +72,7 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
         db.execSQL(RANGE_INDEX)
         createV3(db)
         createV4(db)
+        createV5(db)
 
         db.insert("account", null, ContentValues().apply {
             put("id", LOCAL_ACCOUNT)
@@ -102,6 +103,12 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
         }
         if (oldVersion < 3) createV3(db)
         if (oldVersion < 4) createV4(db)
+        if (oldVersion < 5) createV5(db)
+    }
+
+    /** v5: un cambio puede esperar a otro (la serie nueva de "esta y las siguientes" espera al corte). */
+    private fun createV5(db: SQLiteDatabase) {
+        db.execSQL("ALTER TABLE change ADD COLUMN depends_on INTEGER")
     }
 
     /**
@@ -142,7 +149,7 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
 
     companion object {
         const val NAME = "calendar.db"
-        const val VERSION = 4
+        const val VERSION = 5
         const val LOCAL_ACCOUNT = 1L
         const val KIND_LOCAL = "local"
         const val KIND_CALDAV = "caldav"

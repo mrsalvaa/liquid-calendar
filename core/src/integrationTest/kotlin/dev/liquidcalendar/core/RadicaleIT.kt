@@ -189,6 +189,7 @@ class RadicaleIT {
         override fun failed(change: PendingChange, error: DavException) {
             all[all.indexOfFirst { it.id == change.id }] = change.copy(state = ChangeState.FAILED, error = error.code)
         }
+        override fun pending(id: Long) = all.any { it.id == id }
     }
 
     @Test
@@ -261,7 +262,7 @@ class RadicaleIT {
         val q = Queue(
             listOf(
                 PendingChange(1, calendarUrl, uid, ChangeKind.UPDATE, url, result.original, etag),
-                PendingChange(2, calendarUrl, newUid, ChangeKind.CREATE, newUrl, created, null),
+                PendingChange(2, calendarUrl, newUid, ChangeKind.CREATE, newUrl, created, null, dependsOn = 1),
             ),
         )
         assertEquals(2, Pusher(dav).push(q))

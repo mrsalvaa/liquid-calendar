@@ -119,15 +119,15 @@ object Events {
                 Repo.markDeleted(calendar.id, uid)
                 Repo.enqueue(calendar.id, PendingChange(0, base, uid, ChangeKind.DELETE, row.url ?: return, null, row.etag), summary, row.ics, row.etag)
             }
-        } else {
-            writeExisting(calendar, row, original, summary, schedule = false)
         }
-        // Primero la serie original (cortada) y después la nueva: la cola respeta ese orden.
-        created?.let { (newUid, ics) -> writeNew(calendar, newUid, ics, summary, schedule = false) }
+        val cut = if (original != null) writeExisting(calendar, row, original, summary, schedule = false) else null
+        // La serie nueva se sube solo después de que el servidor aceptó el corte: si el corte queda
+        // en conflicto, la nueva espera (así nunca quedan ocurrencias duplicadas en el servidor).
+        created?.let { (newUid, ics) -> writeNew(calendar, newUid, ics, summary, schedule = false, dependsOn = cut) }
         if (!calendar.local) SyncScheduler.pushSoon()
     }
 
-    private fun writeNew(calendar: CalendarInfo, uid: String, ics: String, summary: String?, schedule: Boolean = true) {
+    private fun writeNew(calendar: CalendarInfo, uid: String, ics: String, summary: String?, schedule: Boolean = true, dependsOn: Long? = null) {
         if (calendar.local) {
             Repo.putEvent(calendar.id, uid, null, null, ics)
             return
@@ -136,19 +136,20 @@ object Events {
         // Nombre del archivo: solo la parte aleatoria del UID (sin "@").
         val url = base + uid.substringBefore('@') + ".ics"
         Repo.putEvent(calendar.id, uid, url, null, ics)
-        Repo.enqueue(calendar.id, PendingChange(0, base, uid, ChangeKind.CREATE, url, ics, null), summary)
+        Repo.enqueue(calendar.id, PendingChange(0, base, uid, ChangeKind.CREATE, url, ics, null, dependsOn = dependsOn), summary)
         if (schedule) SyncScheduler.pushSoon()
     }
 
-    private fun writeExisting(calendar: CalendarInfo, row: Repo.EventRow, ics: String, summary: String?, schedule: Boolean = true) {
+    /** Devuelve el id del cambio encolado (null en un calendario local). */
+    private fun writeExisting(calendar: CalendarInfo, row: Repo.EventRow, ics: String, summary: String?, schedule: Boolean = true): Long? {
         if (calendar.local) {
             Repo.putEvent(calendar.id, row.uid, null, null, ics)
-            return
+            return null
         }
-        val base = Repo.calendarUrl(calendar.id) ?: return
+        val base = Repo.calendarUrl(calendar.id) ?: return null
         // En la caché queda el ETag del servidor (la base del cambio) hasta que se suba.
         Repo.putEvent(calendar.id, row.uid, row.url, row.etag, ics)
-        Repo.enqueue(
+        val id = Repo.enqueue(
             calendar.id,
             PendingChange(0, base, row.uid, ChangeKind.UPDATE, row.url ?: (base + row.uid.substringBefore('@') + ".ics"), ics, row.etag),
             summary,
@@ -156,5 +157,6 @@ object Events {
             originalEtag = row.etag,
         )
         if (schedule) SyncScheduler.pushSoon()
+        return id
     }
 }
