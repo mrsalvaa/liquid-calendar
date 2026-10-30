@@ -68,6 +68,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.liquidcalendar.data.Stores
 import dev.liquidcalendar.ui.glass.ActionSheetHost
+import dev.liquidcalendar.ui.glass.FlatNavBar
+import dev.liquidcalendar.ui.glass.FlatNavBarHeight
 import dev.liquidcalendar.ui.glass.GlassNavBar
 import dev.liquidcalendar.ui.glass.GlassRoot
 import dev.liquidcalendar.ui.glass.GlassTheme
@@ -143,7 +145,7 @@ class MainActivity : ComponentActivity() {
             val settings by Stores.settings.state.collectAsStateWithLifecycle()
             SystemBarsFor(isDarkTheme(settings.themeMode))
             GlassTheme(settings.glassStyle) {
-                App(settings.animatedBackground, settings.weekStart())
+                App(settings.animatedBackground, settings.weekStart(), flatNav = settings.uiStyle == 1 && settings.solidNavBar == 0)
             }
         }
     }
@@ -182,7 +184,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun App(animated: Boolean, weekStart: DayOfWeek) {
+private fun App(animated: Boolean, weekStart: DayOfWeek, flatNav: Boolean) {
     var tab by rememberSaveable { mutableIntStateOf(TAB_MONTH) }
     val clock = rememberDeviceClock()
     // Fecha elegida, compartida por todas las pestañas (se guarda como día desde 1970).
@@ -235,7 +237,9 @@ private fun App(animated: Boolean, weekStart: DayOfWeek) {
 
     val insets = WindowInsets.safeDrawing.asPaddingValues()
     val dir = LocalLayoutDirection.current
-    val navHeight = 70.dp + 12.dp + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // Alto de la barra inferior (flotante: 70 + 12 de margen; plana: pegada abajo).
+    val navBar = if (flatNav) FlatNavBarHeight else 70.dp + 12.dp
+    val navHeight = navBar + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val tabPadding = PaddingValues(
         top = insets.calculateTopPadding(),
         bottom = navHeight + 16.dp,
@@ -279,23 +283,28 @@ private fun App(animated: Boolean, weekStart: DayOfWeek) {
                     enter = fadeIn() + if (reduced) fadeIn() else slideInVertically { it / 2 },
                     exit = fadeOut() + if (reduced) fadeOut() else slideOutVertically { it / 2 },
                 ) {
-                    GlassNavBar(
-                        items = listOf(
-                            NavItem(str(R.string.tab_month), Icons.Rounded.CalendarMonth),
-                            NavItem(str(R.string.tab_week), Icons.Rounded.CalendarViewWeek),
-                            NavItem(str(R.string.tab_day), Icons.Rounded.CalendarViewDay),
-                            NavItem(str(R.string.tab_agenda), Icons.Rounded.ViewAgenda),
-                        ),
-                        selected = tab,
-                        dragPosition = { tabDrag },
-                        onSelect = { tab = it },
-                        modifier = Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+                    val navItems = listOf(
+                        NavItem(str(R.string.tab_month), Icons.Rounded.CalendarMonth),
+                        NavItem(str(R.string.tab_week), Icons.Rounded.CalendarViewWeek),
+                        NavItem(str(R.string.tab_day), Icons.Rounded.CalendarViewDay),
+                        NavItem(str(R.string.tab_agenda), Icons.Rounded.ViewAgenda),
                     )
+                    if (flatNav) {
+                        FlatNavBar(navItems, selected = tab, onSelect = { tab = it })
+                    } else {
+                        GlassNavBar(
+                            items = navItems,
+                            selected = tab,
+                            dragPosition = { tabDrag },
+                            onSelect = { tab = it },
+                            modifier = Modifier.navigationBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+                        )
+                    }
                 }
                 // Nuevo evento, en el día elegido.
                 AnimatedVisibility(
                     stack.isEmpty(),
-                    modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 24.dp, bottom = 100.dp),
+                    modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding().padding(end = 24.dp, bottom = navBar + 18.dp),
                     enter = fadeIn(),
                     exit = fadeOut(),
                 ) {

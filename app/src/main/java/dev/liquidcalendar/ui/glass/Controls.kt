@@ -79,6 +79,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -386,6 +388,50 @@ fun GlassNavBar(
                             color = if (active) p.content else p.contentSecondary,
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+/** Alto de [FlatNavBar] sin contar la barra de navegación del sistema. */
+val FlatNavBarHeight = 64.dp
+
+/**
+ * Barra inferior plana del estilo sólido: pegada abajo y a lo ancho, con el ícono y el texto de la
+ * pestaña activa en el color de énfasis. Incluye el espacio de la barra de navegación del sistema.
+ */
+@Composable
+fun FlatNavBar(items: List<NavItem>, selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val p = LocalGlass.current
+    Column(
+        modifier
+            .fillMaxWidth()
+            .background(p.levels.firstOrNull() ?: p.base)
+            .drawBehind { drawLine(p.outline, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = 1.dp.toPx()) }
+            .navigationBarsPadding(),
+    ) {
+        Row(Modifier.fillMaxWidth().height(FlatNavBarHeight)) {
+            items.forEachIndexed { i, item ->
+                val active = i == selected
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .semantics { this.selected = active }
+                        .clickable(remember { MutableInteractionSource() }, null, role = Role.Tab) { onSelect(i) },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Icon(item.icon, null, Modifier.size(24.dp), tint = if (active) p.accentFg else p.contentSecondary)
+                    Text(
+                        item.label,
+                        Modifier.padding(top = 2.dp),
+                        fontSize = 11.sp,
+                        maxLines = 1,
+                        fontWeight = if (active) FontWeight.SemiBold else FontWeight.Medium,
+                        color = if (active) p.accentFg else p.contentSecondary,
+                    )
                 }
             }
         }

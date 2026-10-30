@@ -2,6 +2,15 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## Sin publicar
+
+### Novedades
+- Estilo de interfaz: además de Liquid Glass (el predeterminado, con todas sus opciones de siempre) está "Sólido", con tarjetas opacas sobre fondo liso y sin efectos de cristal. Tiene tema claro u oscuro, su propio color de énfasis y barra inferior plana o flotante.
+- Al conectar el servidor se le puede poner un nombre. Se muestra en lugar de la dirección, que puede ser larga.
+
+### Mejoras
+- En la vista de día, si un evento queda muy bajo (con las horas contraídas), la hora va a la derecha del título en vez de abajo.
+
 ## 1.1.1
 
 ### Mejoras

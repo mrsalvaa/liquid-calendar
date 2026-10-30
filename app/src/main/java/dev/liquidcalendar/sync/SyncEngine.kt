@@ -114,10 +114,10 @@ object SyncEngine {
     }
 
     /** Guarda la cuenta (y la contraseña, si se escribió una) con lo encontrado en [test]. */
-    suspend fun saveAccount(existingId: Long?, url: String, username: String, password: String?, discovery: Discovery): Long =
+    suspend fun saveAccount(existingId: Long?, url: String, username: String, nickname: String?, password: String?, discovery: Discovery): Long =
         withContext(Dispatchers.IO) {
             val server = (parseServer(url) as ServerUrl.Result.Ok).url
-            val id = Repo.saveCaldavAccount(existingId, server.toString(), username, discovery.principalUrl, discovery.homeUrl)
+            val id = Repo.saveCaldavAccount(existingId, server.toString(), username, nickname, discovery.principalUrl, discovery.homeUrl)
             if (password != null) credentials.save(id, password)
             Repo.replaceRemoteCalendars(id, discovery.calendars) { str(R.string.unnamed_calendar) }
             SyncScheduler.refreshSchedule()

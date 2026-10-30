@@ -55,84 +55,35 @@ fun AppearanceCard(s: AppSettings, edit: ((AppSettings) -> AppSettings) -> Unit)
     val context = LocalContext.current
     val p = LocalGlass.current
     GlassCard {
+        Label(str(R.string.ui_style))
+        ChipRow(listOf(0, 1), s.uiStyle, { str(listOf(R.string.ui_style_liquid, R.string.ui_style_solid)[it]) }) { v ->
+            edit { it.copy(uiStyle = v) }
+        }
+        if (s.uiStyle == 1) {
+            Text(
+                str(R.string.ui_style_solid_hint),
+                Modifier.padding(top = 4.dp),
+                fontSize = 13.sp,
+                color = p.contentSecondary,
+            )
+        }
+
         Label(str(R.string.theme))
         ChipRow(listOf(0, 1, 2), s.themeMode, { str(listOf(R.string.theme_system, R.string.theme_light, R.string.theme_dark)[it]) }) { v ->
             edit { it.copy(themeMode = v) }
         }
 
-        Label(str(R.string.background))
-        // Como en Liquid Clock: 2 = liso (el predeterminado), 0 = en movimiento, 1 = color de énfasis.
-        ChipRow(
-            listOf(2, 0, 1),
-            s.backgroundMode,
-            { str(listOf(R.string.background_moving, R.string.background_accent, R.string.background_plain)[it]) },
-        ) { v ->
-            edit { it.copy(backgroundMode = v) }
-        }
+        if (s.uiStyle == 1) {
+            // Sólido: color de énfasis propio (no pisa el de Liquid Glass) y tipo de barra inferior.
+            Label(str(R.string.background_accent))
+            AccentPicker(s.solidAccent) { c -> edit { it.copy(solidAccent = c) } }
 
-        if (s.backgroundMode == 2) {
-            Text(
-                str(R.string.background_plain_hint),
-                Modifier.padding(top = 4.dp),
-                fontSize = 13.sp,
-                color = p.contentSecondary,
-            )
-        } else if (s.backgroundMode == 0) {
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                COLOR_SETS.forEachIndexed { i, set ->
-                    val blobs = if (p.dark) set.darkBlobs else set.lightBlobs
-                    Swatch(
-                        brush = Brush.linearGradient(listOf(blobs[0], blobs[1])),
-                        selected = s.colorSet == i,
-                        label = str(set.name),
-                        modifier = Modifier.weight(1f),
-                    ) { edit { it.copy(colorSet = i) } }
-                }
-            }
-            val reduced = LocalReducedMotion.current
-            SettingRow(
-                str(R.string.animated_background),
-                subtitle = str(if (reduced) R.string.animated_background_reduced else R.string.animated_background_hint),
-            ) {
-                GlassSwitch(s.animatedBackground, { v -> edit { it.copy(animatedBackground = v) } })
+            Label(str(R.string.nav_bar))
+            ChipRow(listOf(0, 1), s.solidNavBar, { str(listOf(R.string.nav_bar_flat, R.string.nav_bar_floating)[it]) }) { v ->
+                edit { it.copy(solidNavBar = v) }
             }
         } else {
-            val hueIndex = ACCENT_HUES.indexOfFirst { h -> h.tones.any { it.argb() == s.accentColor } }.coerceAtLeast(0)
-            // Los 10 colores en dos filas de 5, todos a la vista.
-            ACCENT_HUES.chunked(5).forEachIndexed { row, hues ->
-                Row(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                    hues.forEachIndexed { col, hue ->
-                        val i = row * 5 + col
-                        Swatch(
-                            brush = Brush.linearGradient(listOf(muted(hue.tones[0]), muted(hue.tones[2]))),
-                            selected = i == hueIndex,
-                            label = str(hue.name),
-                            modifier = Modifier.weight(1f),
-                        ) {
-                            // Al cambiar de color se queda con el mismo tono (claro, medio u oscuro).
-                            val tone = ACCENT_HUES[hueIndex].tones.indexOfFirst { it.argb() == s.accentColor }.coerceAtLeast(1)
-                            edit { it.copy(accentColor = hue.tones[tone].argb()) }
-                        }
-                    }
-                }
-            }
-            Label(str(R.string.tone))
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                ACCENT_HUES[hueIndex].tones.forEachIndexed { t, tone ->
-                    Swatch(
-                        brush = Brush.linearGradient(listOf(muted(tone), muted(tone))),
-                        selected = tone.argb() == s.accentColor,
-                        label = str(listOf(R.string.tone_light, R.string.tone_medium, R.string.tone_dark)[t]),
-                        modifier = Modifier.width(62.dp),
-                    ) { edit { it.copy(accentColor = tone.argb()) } }
-                }
-            }
+            LiquidBackgroundOptions(s, edit)
         }
 
         Label(str(R.string.app_icon))
@@ -154,6 +105,91 @@ fun AppearanceCard(s: AppSettings, edit: ((AppSettings) -> AppSettings) -> Unit)
             fontSize = 12.sp,
             color = p.contentSecondary,
         )
+    }
+}
+
+/** Opciones de fondo de Liquid Glass: liso, en movimiento (con sets de colores) o color de énfasis. */
+@Composable
+private fun LiquidBackgroundOptions(s: AppSettings, edit: ((AppSettings) -> AppSettings) -> Unit) {
+    val p = LocalGlass.current
+    Label(str(R.string.background))
+    // Como en Liquid Clock: 2 = liso (el predeterminado), 0 = en movimiento, 1 = color de énfasis.
+    ChipRow(
+        listOf(2, 0, 1),
+        s.backgroundMode,
+        { str(listOf(R.string.background_moving, R.string.background_accent, R.string.background_plain)[it]) },
+    ) { v ->
+        edit { it.copy(backgroundMode = v) }
+    }
+
+    if (s.backgroundMode == 2) {
+        Text(
+            str(R.string.background_plain_hint),
+            Modifier.padding(top = 4.dp),
+            fontSize = 13.sp,
+            color = p.contentSecondary,
+        )
+    } else if (s.backgroundMode == 0) {
+        Row(
+            Modifier.fillMaxWidth().padding(vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            COLOR_SETS.forEachIndexed { i, set ->
+                val blobs = if (p.dark) set.darkBlobs else set.lightBlobs
+                Swatch(
+                    brush = Brush.linearGradient(listOf(blobs[0], blobs[1])),
+                    selected = s.colorSet == i,
+                    label = str(set.name),
+                    modifier = Modifier.weight(1f),
+                ) { edit { it.copy(colorSet = i) } }
+            }
+        }
+        val reduced = LocalReducedMotion.current
+        SettingRow(
+            str(R.string.animated_background),
+            subtitle = str(if (reduced) R.string.animated_background_reduced else R.string.animated_background_hint),
+        ) {
+            GlassSwitch(s.animatedBackground, { v -> edit { it.copy(animatedBackground = v) } })
+        }
+    } else {
+        AccentPicker(s.accentColor) { c -> edit { it.copy(accentColor = c) } }
+    }
+}
+
+/** Los 10 colores de énfasis (dos filas de 5) y sus tres tonos. */
+@Composable
+private fun AccentPicker(value: Long, onPick: (Long) -> Unit) {
+    val hueIndex = ACCENT_HUES.indexOfFirst { h -> h.tones.any { it.argb() == value } }.coerceAtLeast(0)
+    ACCENT_HUES.chunked(5).forEachIndexed { row, hues ->
+        Row(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+            hues.forEachIndexed { col, hue ->
+                val i = row * 5 + col
+                Swatch(
+                    brush = Brush.linearGradient(listOf(muted(hue.tones[0]), muted(hue.tones[2]))),
+                    selected = i == hueIndex,
+                    label = str(hue.name),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    // Al cambiar de color se queda con el mismo tono (claro, medio u oscuro).
+                    val tone = ACCENT_HUES[hueIndex].tones.indexOfFirst { it.argb() == value }.coerceAtLeast(1)
+                    onPick(hue.tones[tone].argb())
+                }
+            }
+        }
+    }
+    Label(str(R.string.tone))
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        ACCENT_HUES[hueIndex].tones.forEachIndexed { t, tone ->
+            Swatch(
+                brush = Brush.linearGradient(listOf(muted(tone), muted(tone))),
+                selected = tone.argb() == value,
+                label = str(listOf(R.string.tone_light, R.string.tone_medium, R.string.tone_dark)[t]),
+                modifier = Modifier.width(62.dp),
+            ) { onPick(tone.argb()) }
+        }
     }
 }
 

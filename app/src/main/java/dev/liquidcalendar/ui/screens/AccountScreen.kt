@@ -74,6 +74,7 @@ fun AccountScreen(padding: PaddingValues, onBack: () -> Unit) {
 
     var url by rememberSaveable { mutableStateOf(existing?.serverUrl.orEmpty()) }
     var user by rememberSaveable { mutableStateOf(existing?.username.orEmpty()) }
+    var nickname by rememberSaveable { mutableStateOf(existing?.nickname.orEmpty()) }
     // La contraseña nunca se carga en pantalla: vacía = conservar la guardada.
     var password by remember { mutableStateOf("") }
     var status by remember { mutableStateOf<Status>(Status.Idle) }
@@ -157,6 +158,11 @@ fun AccountScreen(padding: PaddingValues, onBack: () -> Unit) {
                     enabled = !busy,
                 )
                 GlassTextField(
+                    nickname, { nickname = it }, str(R.string.server_nickname),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Next),
+                    enabled = !busy,
+                )
+                GlassTextField(
                     user, { user = it }, str(R.string.username),
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.None,
@@ -211,7 +217,7 @@ fun AccountScreen(padding: PaddingValues, onBack: () -> Unit) {
                         // Guardar y sincronizar sigue aunque se cierre esta pantalla.
                         CalendarApp.scope.launch {
                             // Contraseña vacía = conservar la guardada.
-                            SyncEngine.saveAccount(existing?.id, url, user.trim(), password.ifEmpty { null }, discovery)
+                            SyncEngine.saveAccount(existing?.id, url, user.trim(), nickname.trim().ifEmpty { null }, password.ifEmpty { null }, discovery)
                             SyncEngine.sync()
                         }
                         onBack()

@@ -279,6 +279,8 @@ private fun HoursGridContent(
                                 .width(laneWidth - 1.dp)
                                 .height(maxOf(HOUR * ((pl.endMin - pl.startMin) / 60f), 22.dp)),
                             showTime = true,
+                            // En la vista de día hay ancho: si el bloque es bajo, la hora va al lado.
+                            timeBeside = days.size == 1,
                         )
                     }
                     if (d == clock.today) NowLine(clock.zone, HOUR)
@@ -299,11 +301,19 @@ private fun NowLine(zone: ZoneId, HOUR: Dp) {
 
 /** Un evento en la grilla: color de su calendario, título y (si entra) la hora. */
 @Composable
-private fun Block(item: AgendaItem, day: LocalDate, zone: ZoneId, onEvent: (AgendaItem) -> Unit, modifier: Modifier, showTime: Boolean = false) {
+private fun Block(
+    item: AgendaItem,
+    day: LocalDate,
+    zone: ZoneId,
+    onEvent: (AgendaItem) -> Unit,
+    modifier: Modifier,
+    showTime: Boolean = false,
+    timeBeside: Boolean = false,
+) {
     val p = LocalGlass.current
     val color = Color(item.calendar.color)
     val spoken = spokenItem(item, day, zone)
-    Column(
+    BoxWithConstraints(
         modifier
             .clip(RoundedCornerShape(6.dp))
             .background(color.copy(alpha = if (p.dark) 0.34f else 0.26f))
@@ -316,8 +326,19 @@ private fun Block(item: AgendaItem, day: LocalDate, zone: ZoneId, onEvent: (Agen
             }
             .padding(horizontal = 4.dp, vertical = 2.dp),
     ) {
-        Text(titleOf(item), fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        if (showTime) Text(timeLabel(item, day, zone), fontSize = 10.sp, lineHeight = 12.sp, color = p.contentSecondary, maxLines = 1, overflow = TextOverflow.Clip)
+        val title = titleOf(item)
+        // Bloque bajo (p. ej. una hora con la vista contraída del todo): la hora pasa a la derecha.
+        if (showTime && timeBeside && maxHeight < 34.dp) {
+            Row(verticalAlignment = Alignment.Top) {
+                Text(title, Modifier.weight(1f, fill = false), fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(timeLabel(item, day, zone), Modifier.padding(start = 6.dp), fontSize = 10.sp, lineHeight = 13.sp, color = p.contentSecondary, maxLines = 1, overflow = TextOverflow.Clip)
+            }
+        } else {
+            Column {
+                Text(title, fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (showTime) Text(timeLabel(item, day, zone), fontSize = 10.sp, lineHeight = 12.sp, color = p.contentSecondary, maxLines = 1, overflow = TextOverflow.Clip)
+            }
+        }
     }
 }
 

@@ -51,7 +51,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.liquidcalendar.R
-import dev.liquidcalendar.core.ServerUrl
 import dev.liquidcalendar.data.Account
 import dev.liquidcalendar.data.AccountState
 import dev.liquidcalendar.data.CalendarRow
@@ -183,8 +182,7 @@ fun CalendarsScreen(padding: PaddingValues, onBack: () -> Unit, onAccount: () ->
         )
 
         if (caldav != null) {
-            val host = caldav.serverUrl?.let { (ServerUrl.parse(it, allowHttp = true) as? ServerUrl.Result.Ok)?.url?.host }.orEmpty()
-            SectionLabel(str(R.string.account_on_server, caldav.username.orEmpty(), host))
+            SectionLabel(str(R.string.account_on_server, caldav.username.orEmpty(), caldav.serverLabel.orEmpty()))
             GlassCard {
                 AccountStatus(caldav, syncMessage, onAccount)
                 if (pendingCount > 0) SettingRow(str(R.string.pending_changes), subtitle = plural(R.plurals.pending_count, pendingCount), onClick = onChanges)

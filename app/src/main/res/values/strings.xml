@@ -30,6 +30,13 @@
 
     <!-- Apariencia -->
     <string name="appearance">Appearance</string>
+    <string name="ui_style">Interface style</string>
+    <string name="ui_style_liquid">Liquid Glass</string>
+    <string name="ui_style_solid">Solid</string>
+    <string name="ui_style_solid_hint">Opaque cards on a plain background, no glass effects.</string>
+    <string name="nav_bar">Bottom bar</string>
+    <string name="nav_bar_flat">Flat</string>
+    <string name="nav_bar_floating">Floating</string>
     <string name="theme">Theme</string>
     <string name="theme_system">System</string>
     <string name="theme_light">Light</string>
@@ -91,6 +98,7 @@
     <!-- Cuenta CalDAV -->
     <string name="caldav_add">Add CalDAV server</string>
     <string name="server_address">Server address</string>
+    <string name="server_nickname">Server name (optional)</string>
     <string name="username">Username</string>
     <string name="password">Password</string>
     <string name="password_unchanged">Password (unchanged)</string>

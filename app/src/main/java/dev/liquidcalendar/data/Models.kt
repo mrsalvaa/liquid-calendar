@@ -17,6 +17,12 @@ data class AppSettings(
     /** Color de énfasis en ARGB, para backgroundMode = 1. */
     val accentColor: Long = 0xFF0EA5E9,
     val animatedBackground: Boolean = true,
+    /** Estilo de interfaz: 0 = Liquid Glass, 1 = sólido. */
+    val uiStyle: Int = 0,
+    /** Color de énfasis del estilo sólido, en ARGB (aparte del de Liquid Glass). */
+    val solidAccent: Long = 0xFF0EA5E9,
+    /** Barra inferior del estilo sólido: 0 = plana a lo ancho, 1 = flotante. */
+    val solidNavBar: Int = 0,
     /** Índice del icono de la app (ver AppIcons). */
     val appIcon: Int = 0,
     /** Primer día de la semana: 0 = según el idioma del teléfono, 1 (lunes) a 7 (domingo). */
@@ -32,7 +38,7 @@ data class AppSettings(
     /** Mostrar el título y la hora en la pantalla de bloqueo. Por defecto, no. */
     val remindersOnLockScreen: Boolean = false,
 ) {
-    val glassStyle: GlassStyle get() = GlassStyle(themeMode, backgroundMode, colorSet, accentColor)
+    val glassStyle: GlassStyle get() = GlassStyle(themeMode, backgroundMode, colorSet, accentColor, uiStyle, solidAccent)
 
     fun weekStart(locale: Locale = Locale.getDefault()): DayOfWeek =
         if (firstDayOfWeek in 1..7) DayOfWeek.of(firstDayOfWeek) else WeekFields.of(locale).firstDayOfWeek

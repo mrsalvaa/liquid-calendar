@@ -2,6 +2,15 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
+## Unreleased
+
+### New
+- Interface style: besides Liquid Glass (the default, with all its usual options) there is "Solid", with opaque cards on a plain background and no glass effects. It has light or dark theme, its own accent colour and a flat or floating bottom bar.
+- You can give the server a name when connecting. It is shown instead of the address, which can be long.
+
+### Improved
+- In day view, when an event is very short on screen (hours compressed), its time goes to the right of the title instead of below it.
+
 ## 1.1.1
 
 ### Improved

@@ -48,7 +48,13 @@ data class Account(
     val refreshMinutes: Int? = null,
     /** Hosts a los que el usuario aceptó que el feed redirija. */
     val acceptedHosts: Set<String> = emptySet(),
+    /** Apodo que el usuario le puso al servidor (solo CalDAV). */
+    val nickname: String? = null,
 ) {
+    /** El apodo o, si no tiene, el host de la dirección del servidor. */
+    val serverLabel: String?
+        get() = nickname ?: serverUrl?.let { (dev.liquidcalendar.core.ServerUrl.parse(it, allowHttp = true) as? dev.liquidcalendar.core.ServerUrl.Result.Ok)?.url?.host }
+
     val isLocal: Boolean get() = kind == Db.KIND_LOCAL
     val isSubscription: Boolean get() = kind == Db.KIND_SUBSCRIPTION
 }
@@ -107,11 +113,12 @@ object Repo {
     fun subscriptions(): List<Account> = accounts().filter { it.isSubscription }
 
     /** Crea o actualiza la cuenta CalDAV. Volver a guardarla la deja lista para sincronizar. */
-    fun saveCaldavAccount(id: Long?, serverUrl: String, username: String, principalUrl: String, homeUrl: String): Long {
+    fun saveCaldavAccount(id: Long?, serverUrl: String, username: String, nickname: String?, principalUrl: String, homeUrl: String): Long {
         val values = ContentValues().apply {
             put("kind", Db.KIND_CALDAV)
             put("server_url", serverUrl)
             put("username", username)
+            if (nickname != null) put("nickname", nickname) else putNull("nickname")
             put("principal_url", principalUrl)
             put("home_url", homeUrl)
             put("state", AccountState.OK.db)
@@ -281,7 +288,7 @@ object Repo {
     /** Calendarios con su cuenta, para mostrar el nombre, el color y si es local o de un servidor. */
     fun calendarInfos(): Map<Long, CalendarInfo> {
         val hosts = accounts().associate { a ->
-            a.id to a.serverUrl?.let { (dev.liquidcalendar.core.ServerUrl.parse(it, allowHttp = true) as? dev.liquidcalendar.core.ServerUrl.Result.Ok)?.url?.host }
+            a.id to a.serverLabel
         }
         val all = accounts()
         val locals = all.filter { it.isLocal }.map { it.id }.toSet()
@@ -695,6 +702,7 @@ object Repo {
         feedLastModified = str("feed_last_modified"),
         refreshMinutes = long("refresh_minutes")?.toInt(),
         acceptedHosts = str("accepted_hosts")?.split(' ')?.filter { it.isNotBlank() }?.toSet().orEmpty(),
+        nickname = str("nickname"),
     )
 
     private fun Cursor.calendar() = CalendarRow(

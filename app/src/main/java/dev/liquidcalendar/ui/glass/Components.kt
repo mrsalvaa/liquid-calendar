@@ -34,6 +34,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
@@ -136,6 +138,11 @@ fun GlassSurface(
         Modifier
     }
 
+    if (p.solid) {
+        SolidSurface(modifier, shape, tint, pressed, clickModifier, content)
+        return
+    }
+
     // Fondo liso o de énfasis (un brillo quieto y muy suave): refractarlo o desenfocarlo da lo
     // mismo que no hacerlo, así que las superficies del contenido se dibujan sin efectos (mucho
     // menos trabajo para la GPU) con el mismo aspecto. Lo que flota encima sí refracta, porque
@@ -230,6 +237,55 @@ fun GlassSurface(
     }
 }
 
+/** Nivel de anidamiento en el estilo sólido: cada superficie dentro de otra va un tono más allá. */
+private val LocalSolidLevel = staticCompositionLocalOf { 0 }
+
+/**
+ * Superficie del estilo sólido: opaca, con un borde fino y, en oscuro, un brillo apenas más claro
+ * arriba. Al pulsarla se achica un poco, sin rebote.
+ */
+@Composable
+private fun SolidSurface(
+    modifier: Modifier,
+    shape: Shape,
+    tint: Color?,
+    pressed: Boolean,
+    clickModifier: Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val p = LocalGlass.current
+    val level = LocalSolidLevel.current
+    val scale by animateFloatAsState(if (pressed) 0.97f else 1f, spring(stiffness = 900f), label = "press")
+    val fill = p.levels[level.coerceAtMost(p.levels.lastIndex)]
+    Box(
+        modifier
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+            .then(if (!p.dark && level == 0) Modifier.outerShadow(shape, 10.dp) else Modifier)
+            .clip(shape)
+            .background(fill)
+            .then(if (tint != null) Modifier.background(tint) else Modifier)
+            .then(
+                if (p.dark) {
+                    Modifier.drawBehind {
+                        drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.035f), 0.6f to Color.Transparent))
+                    }
+                } else {
+                    Modifier
+                },
+            )
+            .border(1.dp, p.outline, shape)
+            .then(clickModifier),
+        propagateMinConstraints = true,
+    ) {
+        CompositionLocalProvider(LocalSolidLevel provides level + 1) {
+            Box(content = content)
+        }
+    }
+}
+
 /**
  * Sombra suave que solo se ve fuera de [shape], para superficies semitransparentes. Se pinta una
  * vez por tamaño en un bitmap, así que desplazar la lista no la recalcula.
@@ -296,7 +352,7 @@ fun GlassIconButton(
             .semantics { if (!enabled) disabled() },
         shape = CircleShape,
         strong = true,
-        tint = if (prominent) p.accent.copy(alpha = if (p.dark) 0.6f else 0.92f) else null,
+        tint = if (prominent) p.accentFill() else null,
         onClick = if (enabled) onClick else null,
     ) {
         Icon(
@@ -320,8 +376,8 @@ fun GlassButton(
 ) {
     val p = LocalGlass.current
     val tint = when {
-        danger -> p.danger.copy(alpha = 0.55f)
-        prominent -> p.accent.copy(alpha = if (p.dark) 0.6f else 0.92f)
+        danger -> p.danger.copy(alpha = if (p.solid) 0.85f else 0.55f)
+        prominent -> p.accentFill()
         else -> null
     }
     val textColor = when {
@@ -374,7 +430,7 @@ fun GlassChip(
                 role = Role.RadioButton
             },
         shape = shape,
-        tint = if (selected) p.accent.copy(alpha = if (p.dark) 0.5f else 0.92f) else null,
+        tint = if (selected) (if (p.solid) p.accent else p.accent.copy(alpha = if (p.dark) 0.5f else 0.92f)) else null,
         frost = 4.dp,
         shadowRadius = 6.dp,
         onClick = onClick,

@@ -68,7 +68,16 @@ data class GlassPalette(
     val accentGlow: Boolean = false,
     /** Acento para iconos, textos y líneas: ajustado para que se lea sobre el fondo. */
     val accentFg: Color = Color.Unspecified,
+    /** Estilo sólido: superficies opacas, sin refracción. */
+    val solid: Boolean = false,
+    /** Sólido: color de cada nivel de superficie (tarjeta, lo que va dentro de ella, ...). */
+    val levels: List<Color> = emptyList(),
+    /** Sólido: borde fino de las superficies. */
+    val outline: Color = Color.Transparent,
 )
+
+/** Color de relleno para lo destacado (botón principal, chip elegido). */
+fun GlassPalette.accentFill(): Color = if (solid) accent else accent.copy(alpha = if (dark) 0.6f else 0.92f)
 
 val DarkGlass = GlassPalette(
     dark = true,
@@ -204,6 +213,35 @@ val PlainLightGlass = LightGlass.copy(
     blobs = emptyList(),
 )
 
+/** Estilo sólido, oscuro: tarjetas grafito sobre un fondo casi negro (los niveles se aclaran). */
+val SolidDark = DarkGlass.copy(
+    base = Color(0xFF0A0A0C),
+    contentSecondary = Color.White.copy(alpha = 0.55f),
+    tint = Color(0xFF1A1A1E),
+    tintStrong = Color(0xFF242428),
+    highlight = 0f,
+    rim = 0.25f,
+    blobs = emptyList(),
+    solid = true,
+    levels = listOf(Color(0xFF1A1A1E), Color(0xFF26262B), Color(0xFF313137)),
+    outline = Color.White.copy(alpha = 0.07f),
+)
+
+/** Estilo sólido, claro: tarjetas blancas sobre gris claro (los niveles se oscurecen). */
+val SolidLight = LightGlass.copy(
+    base = Color(0xFFEEEEF2),
+    content = Color(0xFF111318),
+    contentSecondary = Color(0xFF111318).copy(alpha = 0.55f),
+    tint = Color.White,
+    tintStrong = Color(0xFFF6F6F9),
+    highlight = 0f,
+    rim = 0f,
+    blobs = emptyList(),
+    solid = true,
+    levels = listOf(Color.White, Color(0xFFF1F1F5), Color(0xFFE6E6EB)),
+    outline = Color.Black.copy(alpha = 0.06f),
+)
+
 val LocalGlass = staticCompositionLocalOf { DarkGlass }
 
 /** false en las pestañas ocultas: sirve para pausar lo que se refresca en cada fotograma. */
@@ -228,6 +266,10 @@ data class GlassStyle(
     val colorSet: Int = 0,
     /** Color de énfasis en ARGB, para backgroundMode = 1. */
     val accentColor: Long = 0xFF0EA5E9,
+    /** 0 = Liquid Glass, 1 = sólido. */
+    val uiStyle: Int = 0,
+    /** Color de énfasis del estilo sólido, en ARGB. */
+    val solidAccent: Long = 0xFF0EA5E9,
 )
 
 /**
@@ -259,7 +301,11 @@ fun isDarkTheme(themeMode: Int): Boolean = when (themeMode) {
 /** Colores del tema para [settings] en modo claro u oscuro (también los usa el widget). */
 fun glassPalette(settings: GlassStyle, dark: Boolean): GlassPalette {
     val base = if (dark) DarkGlass else LightGlass
-    val p = if (settings.backgroundMode == 2) {
+    val p = if (settings.uiStyle == 1) {
+        val solid = if (dark) SolidDark else SolidLight
+        val accent = muted(Color(settings.solidAccent))
+        solid.copy(accent = accent, onAccent = readableOn(accent))
+    } else if (settings.backgroundMode == 2) {
         val plain = if (dark) PlainDarkGlass else PlainLightGlass
         plain.copy(onAccent = onAccentGlass(plain.accent, plain.base))
     } else if (settings.backgroundMode == 1) {

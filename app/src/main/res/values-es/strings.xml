@@ -30,6 +30,13 @@
 
     <!-- Apariencia -->
     <string name="appearance">Apariencia</string>
+    <string name="ui_style">Estilo de interfaz</string>
+    <string name="ui_style_liquid">Liquid Glass</string>
+    <string name="ui_style_solid">Sólido</string>
+    <string name="ui_style_solid_hint">Tarjetas opacas sobre fondo liso, sin efectos de cristal.</string>
+    <string name="nav_bar">Barra inferior</string>
+    <string name="nav_bar_flat">Plana</string>
+    <string name="nav_bar_floating">Flotante</string>
     <string name="theme">Tema</string>
     <string name="theme_system">Sistema</string>
     <string name="theme_light">Claro</string>
@@ -92,6 +99,7 @@
     <!-- Cuenta CalDAV -->
     <string name="caldav_add">Agregar servidor CalDAV</string>
     <string name="server_address">Dirección del servidor</string>
+    <string name="server_nickname">Nombre del servidor (opcional)</string>
     <string name="username">Usuario</string>
     <string name="password">Contraseña</string>
     <string name="password_unchanged">Contraseña (sin cambios)</string>

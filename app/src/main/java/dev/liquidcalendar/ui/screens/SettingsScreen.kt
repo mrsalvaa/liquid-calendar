@@ -17,7 +17,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.liquidcalendar.BuildConfig
 import dev.liquidcalendar.R
 import dev.liquidcalendar.data.AppSettings
-import dev.liquidcalendar.core.ServerUrl
 import dev.liquidcalendar.data.AccountState
 import dev.liquidcalendar.data.Repo
 import dev.liquidcalendar.data.Stores
@@ -71,7 +70,7 @@ fun SettingsScreen(padding: PaddingValues, onBack: () -> Unit, onAccount: () -> 
                 subtitle = when {
                     a == null -> str(R.string.not_configured)
                     a.state == AccountState.NEEDS_PASSWORD -> str(R.string.needs_password_short)
-                    else -> str(R.string.account_on_server, a.username.orEmpty(), a.serverUrl?.let { u -> (ServerUrl.parse(u, allowHttp = true) as? ServerUrl.Result.Ok)?.url?.host }.orEmpty())
+                    else -> str(R.string.account_on_server, a.username.orEmpty(), a.serverLabel.orEmpty())
                 },
                 onClick = onAccount,
             )
