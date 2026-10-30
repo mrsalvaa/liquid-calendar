@@ -8,6 +8,11 @@ import dev.liquidcalendar.core.ics.DraftTime
 import dev.liquidcalendar.core.ics.EventDraft
 import dev.liquidcalendar.core.ics.Ics
 import dev.liquidcalendar.core.ics.IcsWriter
+import dev.liquidcalendar.core.ics.Moment
+import dev.liquidcalendar.core.ics.Recurrence
+import dev.liquidcalendar.core.ics.Series
+import dev.liquidcalendar.core.ics.SeriesScope
+import dev.liquidcalendar.core.ics.When
 import dev.liquidcalendar.core.sync.ChangeKind
 import dev.liquidcalendar.core.sync.ChangeState
 import dev.liquidcalendar.core.sync.ChangeStore
@@ -229,6 +234,65 @@ class RadicaleIT {
         val q3 = Queue(listOf(conflict.copy(state = ChangeState.QUEUED, baseEtag = conflict.serverEtag)))
         assertEquals(1, Pusher(dav).push(q3))
         assertEquals("B (desde el celu)", Ics.parseResource(String(dav.get(dav.url("${calendarUrl}$b.ics")).body)).components.single().info.summary)
+    }
+
+    private fun seriesIcs(uid: String) = listOf(
+        "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Otro cliente//ES",
+        "BEGIN:VEVENT", "UID:$uid", "DTSTAMP:20261001T000000Z",
+        "DTSTART;TZID=America/Argentina/Buenos_Aires:20261005T100000", "DTEND;TZID=America/Argentina/Buenos_Aires:20261005T110000",
+        "RRULE:FREQ=WEEKLY;COUNT=6", "SUMMARY:Clase", "X-OTRO:conservar",
+        "BEGIN:VALARM", "TRIGGER:-PT10M", "ACTION:DISPLAY", "DESCRIPTION:Clase", "X-WR-ALARMUID:ajena", "END:VALARM",
+        "END:VEVENT", "END:VCALENDAR", "",
+    ).joinToString("\r\n")
+
+    @Test
+    fun seriesThisAndFollowingThroughTheQueue() {
+        val dav = client
+        val zone = java.time.ZoneId.of("America/Argentina/Buenos_Aires")
+        val uid = IcsWriter.newUid()
+        val url = "${calendarUrl}${uid.substringBefore('@')}.ics"
+        val ics = seriesIcs(uid)
+        val etag = dav.put(dav.url(url), ics, ifNoneMatch = true)!!
+        val occurrence = Moment.Exact(java.time.LocalDateTime.of(2026, 10, 19, 10, 0).atZone(zone).toInstant())
+        val before = EventDraft("Clase", null, null, DraftTime.Timed(occurrence.instant, occurrence.instant.plusSeconds(3600)))
+        val result = Series.edit(ics, uid, occurrence, SeriesScope.FOLLOWING, before, before.copy(summary = "Clase (aula nueva)"), zone)
+        val (newUid, created) = result.created!!
+        val newUrl = "${calendarUrl}${newUid.substringBefore('@')}.ics"
+        val q = Queue(
+            listOf(
+                PendingChange(1, calendarUrl, uid, ChangeKind.UPDATE, url, result.original, etag),
+                PendingChange(2, calendarUrl, newUid, ChangeKind.CREATE, newUrl, created, null),
+            ),
+        )
+        assertEquals(2, Pusher(dav).push(q))
+        // Leídas de vuelta del servidor, las dos series juntas son las 6 clases de siempre.
+        val back = listOf(url, newUrl).map { String(dav.get(dav.url(it)).body) }
+        val from = java.time.Instant.parse("2026-10-01T00:00:00Z")
+        val to = java.time.Instant.parse("2026-12-31T00:00:00Z")
+        val occ = back.flatMap { Recurrence.expand(Ics.parseResource(it), from, to, zone) }.sortedBy { (it.time as When.Timed).start }
+        assertEquals(6, occ.size)
+        assertEquals(listOf("Clase", "Clase", "Clase (aula nueva)", "Clase (aula nueva)", "Clase (aula nueva)", "Clase (aula nueva)"), occ.map { it.summary })
+        for (b in back) assertTrue("X-WR-ALARMUID:ajena" in b && "X-OTRO:conservar" in b, "se perdió lo de otro cliente")
+    }
+
+    @Test
+    fun seriesConflictNeverOverwrites() {
+        val dav = client
+        val zone = java.time.ZoneId.of("America/Argentina/Buenos_Aires")
+        val uid = IcsWriter.newUid()
+        val url = "${calendarUrl}${uid.substringBefore('@')}.ics"
+        val ics = seriesIcs(uid)
+        val etag = dav.put(dav.url(url), ics, ifNoneMatch = true)!!
+        // Otro cliente cambia la serie.
+        rawRequest("PUT", url, ics.replace("SUMMARY:Clase", "SUMMARY:Clase (otro cliente)"), "text/calendar; charset=utf-8")
+        val occurrence = Moment.Exact(java.time.LocalDateTime.of(2026, 10, 12, 10, 0).atZone(zone).toInstant())
+        val mine = Series.delete(ics, uid, occurrence, SeriesScope.THIS, zone).original!!
+        val q = Queue(listOf(PendingChange(1, calendarUrl, uid, ChangeKind.UPDATE, url, mine, etag)))
+        assertEquals(0, Pusher(dav).push(q))
+        val c = q.all.single()
+        assertEquals(ChangeState.CONFLICT, c.state)
+        assertTrue("Clase (otro cliente)" in c.serverIcs!!)
+        assertTrue("Clase (otro cliente)" in String(dav.get(dav.url(url)).body))
     }
 
     @Test
