@@ -44,16 +44,28 @@ object Subscriptions {
         data class Failed(val error: DavException?) : Result
     }
 
-    /** Prueba una URL antes de guardarla: cuántos eventos trae (sin guardar nada). */
-    suspend fun probe(feed: FeedUrl, acceptedHosts: Set<String>): Result = withContext(Dispatchers.IO) {
+    /**
+     * Agrega una suscripción con una sola descarga: si el feed falla o redirige a otro servidor,
+     * no se guarda nada y se devuelve el motivo.
+     */
+    suspend fun subscribe(feed: FeedUrl, name: String, color: Int, refreshMinutes: Int, acceptedHosts: Set<String>): Result = withContext(Dispatchers.IO) {
         try {
             when (val r = client.fetch(feed, acceptedHosts = acceptedHosts)) {
-                is FeedResult.Updated -> Result.Ok(IcsFiles.preview(r.ics).events.size)
-                FeedResult.NotModified -> Result.Unchanged
+                is FeedResult.Updated -> {
+                    val events = IcsFiles.preview(r.ics).events
+                    val calendarId = Repo.addSubscription(feed.toString(), name, color, refreshMinutes, acceptedHosts)
+                    val accountId = Repo.calendars().first { it.id == calendarId }.accountId
+                    Repo.replaceEvents(calendarId, events.map { Repo.StoredEvent(null, it.uid, null, it.ics) })
+                    Repo.feedRefreshed(accountId, r.etag, r.lastModified)
+                    Repo.updateSyncState(accountId, AccountState.OK, null, null, 0, lastSync = System.currentTimeMillis())
+                    AppLog.event("feed_added")
+                    Result.Ok(events.size)
+                }
+                FeedResult.NotModified -> Result.Failed(null)
                 is FeedResult.NeedsConfirmation -> Result.Redirect(r.to)
             }
         } catch (e: DavException) {
-            AppLog.event("feed_probe_failed", e)
+            AppLog.event("feed_add_failed", e)
             Result.Failed(e)
         } catch (e: IcsException) {
             Result.Failed(null)

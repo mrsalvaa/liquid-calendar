@@ -71,7 +71,6 @@
     <string name="local_only_hint">Los calendarios de este dispositivo no se suben a ningún servidor.</string>
     <string name="new_local_calendar">Nuevo calendario en este dispositivo</string>
     <string name="calendar_name">Nombre</string>
-    <string name="create">Crear</string>
     <plurals name="events_count">
         <item quantity="one">%d evento</item>
         <item quantity="many">%d eventos</item>
@@ -292,4 +291,86 @@
     <string name="reminders_lock_screen">Mostrar el detalle en la pantalla de bloqueo</string>
     <string name="reminders_lock_screen_hint">Desactivado: la pantalla de bloqueo solo dice que hay un recordatorio, sin el evento.</string>
     <string name="reminders_no_permission">Las notificaciones de esta app están desactivadas en los ajustes de Android.</string>
+
+    <!-- Etapa 6: calendarios, suscripciones, importar y exportar -->
+    <string name="subscription_badge">Suscripción de %s (solo lectura)</string>
+    <string name="subscriptions">Suscripciones</string>
+    <string name="add_subscription">Agregar suscripción</string>
+    <string name="subscription_url">Dirección del feed (webcal:// o https://)</string>
+    <string name="subscription_ip_notice">Cada actualización consulta al servidor del feed (%s), que así ve la IP de este dispositivo. Las suscripciones son de solo lectura y nunca se suben a ningún lado.</string>
+    <string name="subscription_ip_notice_generic">Cada actualización consulta al servidor del feed, que así ve la IP de este dispositivo. Las suscripciones son de solo lectura y nunca se suben a ningún lado.</string>
+    <string name="refresh_every">Actualizar</string>
+    <string name="refresh_now">Actualizar ahora</string>
+    <string name="sync_every_day">Cada día</string>
+    <string name="sync_every_week">Cada semana</string>
+    <string name="feed_redirect_title">El feed se mudó a otro servidor</string>
+    <string name="feed_redirect_text">Ahora apunta a %s. ¿Seguirlo? Ese servidor también va a ver tu IP.</string>
+    <string name="follow">Seguir</string>
+    <plurals name="feed_events">
+        <item quantity="one">%d evento en el feed</item>
+        <item quantity="many">%d eventos en el feed</item>
+        <item quantity="other">%d eventos en el feed</item>
+    </plurals>
+    <string name="feed_invalid">Esa no es una dirección de feed válida.</string>
+    <string name="feed_not_ics">El feed no es un calendario válido o es demasiado grande.</string>
+    <string name="new_remote_calendar">Nuevo calendario en el servidor</string>
+    <string name="calendar_content">Contenido</string>
+    <string name="kind_events">Eventos</string>
+    <string name="kind_events_tasks">Eventos y tareas</string>
+    <string name="mkcalendar_unsupported">Tu servidor no permite crear calendarios desde una app. Crealo en el servidor y va a aparecer en la próxima sincronización.</string>
+    <string name="calendar_color">Color</string>
+    <string name="export_ics">Exportar .ics</string>
+    <string name="export_warning">El archivo .ics no va cifrado: cualquiera que lo tenga puede leer estos eventos.</string>
+    <string name="export_continue">Exportar</string>
+    <string name="exported">Exportado</string>
+    <string name="delete_calendar">Borrar calendario</string>
+    <string name="delete_calendar_title">¿Borrar «%s»?</string>
+    <plurals name="delete_calendar_events">
+        <item quantity="one">Se pierde %d evento.</item>
+        <item quantity="many">Se pierden %d eventos.</item>
+        <item quantity="other">Se pierden %d eventos.</item>
+    </plurals>
+    <string name="delete_calendar_server">Se borra también del servidor %s. No se puede deshacer.</string>
+    <string name="delete_calendar_local">Se borra de este dispositivo. No se puede deshacer.</string>
+    <string name="delete_calendar_type">Escribí el nombre del calendario para confirmar</string>
+    <string name="export_first">Exportar primero</string>
+    <string name="missing_title">«%s» ya no está en el servidor</string>
+    <plurals name="missing_text">
+        <item quantity="one">Lo borraron desde otro lado. Su %d evento sigue en este dispositivo.</item>
+        <item quantity="many">Lo borraron desde otro lado. Sus %d eventos siguen en este dispositivo.</item>
+        <item quantity="other">Lo borraron desde otro lado. Sus %d eventos siguen en este dispositivo.</item>
+    </plurals>
+    <string name="keep_local">Conservar en este dispositivo</string>
+    <string name="discard_calendar">Descartar</string>
+    <string name="missing_badge">Ya no está en el servidor</string>
+    <string name="import_ics">Importar .ics</string>
+    <plurals name="import_events">
+        <item quantity="one">%d evento para importar</item>
+        <item quantity="many">%d eventos para importar</item>
+        <item quantity="other">%d eventos para importar</item>
+    </plurals>
+    <plurals name="import_series">
+        <item quantity="one">incluye %d evento que se repite</item>
+        <item quantity="many">incluye %d eventos que se repiten</item>
+        <item quantity="other">incluye %d eventos que se repiten</item>
+    </plurals>
+    <plurals name="import_skipped">
+        <item quantity="one">%d no se puede leer y se saltea</item>
+        <item quantity="many">%d no se pueden leer y se saltean</item>
+        <item quantity="other">%d no se pueden leer y se saltean</item>
+    </plurals>
+    <plurals name="import_duplicates">
+        <item quantity="one">%d ya está en ese calendario y se saltea</item>
+        <item quantity="many">%d ya están en ese calendario y se saltean</item>
+        <item quantity="other">%d ya están en ese calendario y se saltean</item>
+    </plurals>
+    <string name="import_into">Importar en</string>
+    <string name="import_button">Importar</string>
+    <plurals name="imported">
+        <item quantity="one">%d evento importado</item>
+        <item quantity="many">%d eventos importados</item>
+        <item quantity="other">%d eventos importados</item>
+    </plurals>
+    <string name="import_error">No es un archivo .ics válido o es demasiado grande.</string>
+    <string name="calendar_saved">Guardado</string>
 </resources>

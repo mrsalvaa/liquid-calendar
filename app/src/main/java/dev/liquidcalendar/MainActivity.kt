@@ -94,7 +94,13 @@ import dev.liquidcalendar.ui.screens.views.rememberDeviceClock
 import androidx.compose.runtime.mutableLongStateOf
 import java.time.DayOfWeek
 import java.time.LocalDate
+import dev.liquidcalendar.core.ics.ImportPreview
+import dev.liquidcalendar.ui.screens.CalendarEditScreen
+import dev.liquidcalendar.ui.screens.CalendarTarget
+import dev.liquidcalendar.ui.screens.CalendarsAction
 import dev.liquidcalendar.ui.screens.CalendarsScreen
+import dev.liquidcalendar.ui.screens.ImportScreen
+import dev.liquidcalendar.ui.screens.SubscriptionScreen
 import dev.liquidcalendar.ui.screens.LocalToast
 import dev.liquidcalendar.ui.screens.SettingsScreen
 import dev.liquidcalendar.ui.screens.TAB_COUNT
@@ -111,6 +117,9 @@ sealed interface Overlay {
     data class Event(val item: AgendaItem) : Overlay
     data class Edit(val target: EditTarget) : Overlay
     data object Changes : Overlay
+    data class CalendarEdit(val target: CalendarTarget) : Overlay
+    data class Subscription(val calendarId: Long?) : Overlay
+    data class Import(val preview: ImportPreview) : Overlay
 }
 
 class MainActivity : ComponentActivity() {
@@ -276,7 +285,18 @@ private fun App(animated: Boolean, weekStart: DayOfWeek) {
                             onCalendars = { push(Overlay.Calendars) },
                         )
                         Overlay.Account -> AccountScreen(overlayPadding, ::pop)
-                        Overlay.Calendars -> CalendarsScreen(overlayPadding, ::pop, onAccount = { push(Overlay.Account) }, onChanges = { push(Overlay.Changes) })
+                        Overlay.Calendars -> CalendarsScreen(overlayPadding, ::pop, onAccount = { push(Overlay.Account) }, onChanges = { push(Overlay.Changes) }) { a ->
+                            push(
+                                when (a) {
+                                    is CalendarsAction.Edit -> Overlay.CalendarEdit(a.target)
+                                    is CalendarsAction.Subscription -> Overlay.Subscription(a.calendarId)
+                                    is CalendarsAction.Import -> Overlay.Import(a.preview)
+                                },
+                            )
+                        }
+                        is Overlay.CalendarEdit -> CalendarEditScreen(current.target, overlayPadding, ::pop)
+                        is Overlay.Subscription -> SubscriptionScreen(current.calendarId, overlayPadding, ::pop)
+                        is Overlay.Import -> ImportScreen(current.preview, overlayPadding, ::pop)
                         is Overlay.Event -> EventDetailScreen(current.item, clock, overlayPadding, ::pop, onEdit = { push(Overlay.Edit(it)) })
                         is Overlay.Edit -> EventEditScreen(current.target, clock, weekStart, overlayPadding, ::pop, onSaved = {
                             // Al guardar se vuelve a la vista (el detalle abierto debajo ya no está al día).

@@ -34,6 +34,9 @@ import dev.liquidcalendar.data.EditBlock
 import dev.liquidcalendar.data.Events
 import dev.liquidcalendar.data.Repo
 import dev.liquidcalendar.ui.glass.GlassButton
+import dev.liquidcalendar.core.ics.IcsFiles
+import androidx.compose.material.icons.rounded.FileDownload
+import java.time.LocalDate
 import dev.liquidcalendar.ui.glass.LocalActionSheet
 import dev.liquidcalendar.ui.glass.SheetAction
 import dev.liquidcalendar.ui.glass.SheetSpec
@@ -64,6 +67,7 @@ fun EventDetailScreen(item: AgendaItem, clock: DeviceClock, padding: PaddingValu
     val editable by produceState<Pair<Editable?, EditBlock?>?>(null, version) { value = Events.editable(item, clock.zone) }
     val dialog = LocalDialog.current
     val uiScope = rememberCoroutineScope()
+    val export = rememberExport()
     val change by produceState<Repo.ChangeRow?>(null, version) {
         value = withContext(Dispatchers.IO) { Repo.changeFor(item.calendar.id, occ.uid) }
     }
@@ -196,6 +200,13 @@ fun EventDetailScreen(item: AgendaItem, clock: DeviceClock, padding: PaddingValu
                 }
             }
         }
+        // Exportar este evento (con su serie entera): el aviso de que no va cifrado sale antes.
+        GlassButton(
+            str(R.string.export_ics),
+            { export(IcsFiles.fileName(occ.summary ?: "evento", LocalDate.now())) { IcsFiles.export(listOfNotNull(Repo.event(item.calendar.id, occ.uid)?.ics)) } },
+            Modifier.fillMaxWidth().padding(top = 10.dp),
+            icon = Icons.Rounded.FileDownload,
+        )
         Spacer(Modifier.height(8.dp))
     }
 }

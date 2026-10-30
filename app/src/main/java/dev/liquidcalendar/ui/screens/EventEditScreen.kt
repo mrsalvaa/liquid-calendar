@@ -187,7 +187,7 @@ fun EventEditScreen(target: EditTarget, clock: DeviceClock, weekStart: DayOfWeek
                     leading = {
                         Box(Modifier.size(14.dp).clip(CircleShape).background(Color(calendar.color)))
                         Spacer(Modifier.width(10.dp))
-                        OriginIcon(calendar.local, size = 16)
+                        OriginIcon(calendar, size = 16)
                         Spacer(Modifier.width(10.dp))
                     },
                     // Al editar, el calendario no se cambia (mover eventos entre calendarios no está en esta versión).

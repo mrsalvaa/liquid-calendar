@@ -15,6 +15,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.rounded.RssFeed
 import androidx.compose.material.icons.rounded.Layers
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Settings
@@ -151,8 +153,12 @@ fun timeLabel(item: AgendaItem, day: LocalDate?, zone: ZoneId): String = when (v
 fun spokenItem(item: AgendaItem, day: LocalDate?, zone: ZoneId): String =
     str(R.string.event_summary, titleOf(item), timeLabel(item, day, zone), "${item.calendar.name}, ${originText(item.calendar)}")
 
-fun originText(c: CalendarInfo): String =
-    if (c.local) str(R.string.local_badge) else str(R.string.synced_badge, c.host.orEmpty())
+fun originText(c: CalendarInfo): String = when {
+    c.local -> str(R.string.local_badge)
+    c.subscription -> str(R.string.subscription_badge, c.host.orEmpty())
+    c.missing -> str(R.string.missing_badge)
+    else -> str(R.string.synced_badge, c.host.orEmpty())
+}
 
 /** Ícono y texto que dicen si un calendario vive solo en el celu o se sincroniza con un servidor. */
 @Composable
@@ -165,10 +171,26 @@ fun CalendarBadge(c: CalendarInfo, modifier: Modifier = Modifier, showName: Bool
             Text(c.name, fontSize = 13.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.width(8.dp))
         }
-        OriginIcon(c.local)
+        OriginIcon(c)
         Spacer(Modifier.width(4.dp))
         Text(originText(c), fontSize = 12.sp, color = p.contentSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
+}
+
+/** Ícono del origen de un calendario: dispositivo, nube (sincronizado) o feed (suscripción). */
+@Composable
+fun OriginIcon(c: CalendarInfo, size: Int = 14) {
+    Icon(
+        when {
+            c.local -> Icons.Rounded.PhoneAndroid
+            c.subscription -> Icons.Rounded.RssFeed
+            c.missing -> Icons.Rounded.CloudOff
+            else -> Icons.Rounded.Cloud
+        },
+        null,
+        Modifier.size(size.dp),
+        tint = LocalGlass.current.contentSecondary,
+    )
 }
 
 /** Celu = local; nube = sincronizado. La descripción va en el texto al lado, no en el ícono. */

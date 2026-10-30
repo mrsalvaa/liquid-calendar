@@ -71,7 +71,6 @@
     <string name="local_only_hint">Calendars on this device are never uploaded to any server.</string>
     <string name="new_local_calendar">New calendar on this device</string>
     <string name="calendar_name">Name</string>
-    <string name="create">Create</string>
     <plurals name="events_count">
         <item quantity="one">%d event</item>
         <item quantity="other">%d events</item>
@@ -281,4 +280,78 @@
     <string name="reminders_lock_screen">Show details on the lock screen</string>
     <string name="reminders_lock_screen_hint">Off: the lock screen only says there\'s a reminder, without the event.</string>
     <string name="reminders_no_permission">Notifications are off for this app in Android settings.</string>
+
+    <!-- Etapa 6: calendarios, suscripciones, importar y exportar -->
+    <string name="subscription_badge">Subscription from %s (read-only)</string>
+    <string name="subscriptions">Subscriptions</string>
+    <string name="add_subscription">Add subscription</string>
+    <string name="subscription_url">Feed address (webcal:// or https://)</string>
+    <string name="subscription_ip_notice">Every refresh contacts the feed\'s server (%s), which sees this device\'s IP address. Subscriptions are read-only and never uploaded anywhere.</string>
+    <string name="subscription_ip_notice_generic">Every refresh contacts the feed\'s server, which sees this device\'s IP address. Subscriptions are read-only and never uploaded anywhere.</string>
+    <string name="refresh_every">Refresh</string>
+    <string name="refresh_now">Refresh now</string>
+    <string name="sync_every_day">Every day</string>
+    <string name="sync_every_week">Every week</string>
+    <string name="feed_redirect_title">The feed moved to another server</string>
+    <string name="feed_redirect_text">It now points to %s. Follow it? That server will also see your IP address.</string>
+    <string name="follow">Follow</string>
+    <plurals name="feed_events">
+        <item quantity="one">%d event in the feed</item>
+        <item quantity="other">%d events in the feed</item>
+    </plurals>
+    <string name="feed_invalid">That isn\'t a valid feed address.</string>
+    <string name="feed_not_ics">The feed isn\'t a valid calendar file, or it\'s too large.</string>
+    <string name="new_remote_calendar">New calendar on the server</string>
+    <string name="calendar_content">Contents</string>
+    <string name="kind_events">Events</string>
+    <string name="kind_events_tasks">Events and tasks</string>
+    <string name="mkcalendar_unsupported">Your server doesn\'t let apps create calendars. Create it on the server and it will show up on the next sync.</string>
+    <string name="calendar_color">Color</string>
+    <string name="export_ics">Export .ics</string>
+    <string name="export_warning">The .ics file is not encrypted: anyone who gets it can read these events.</string>
+    <string name="export_continue">Export</string>
+    <string name="exported">Exported</string>
+    <string name="delete_calendar">Delete calendar</string>
+    <string name="delete_calendar_title">Delete “%s”?</string>
+    <plurals name="delete_calendar_events">
+        <item quantity="one">%d event is lost.</item>
+        <item quantity="other">%d events are lost.</item>
+    </plurals>
+    <string name="delete_calendar_server">It\'s deleted from the server %s too. This can\'t be undone.</string>
+    <string name="delete_calendar_local">It\'s deleted from this device. This can\'t be undone.</string>
+    <string name="delete_calendar_type">Type the calendar\'s name to confirm</string>
+    <string name="export_first">Export first</string>
+    <string name="missing_title">“%s” is no longer on the server</string>
+    <plurals name="missing_text">
+        <item quantity="one">It was deleted somewhere else. Its %d event is still on this device.</item>
+        <item quantity="other">It was deleted somewhere else. Its %d events are still on this device.</item>
+    </plurals>
+    <string name="keep_local">Keep on this device</string>
+    <string name="discard_calendar">Discard</string>
+    <string name="missing_badge">No longer on the server</string>
+    <string name="import_ics">Import .ics</string>
+    <plurals name="import_events">
+        <item quantity="one">%d event to import</item>
+        <item quantity="other">%d events to import</item>
+    </plurals>
+    <plurals name="import_series">
+        <item quantity="one">including %d repeating event</item>
+        <item quantity="other">including %d repeating events</item>
+    </plurals>
+    <plurals name="import_skipped">
+        <item quantity="one">%d can\'t be read and is skipped</item>
+        <item quantity="other">%d can\'t be read and are skipped</item>
+    </plurals>
+    <plurals name="import_duplicates">
+        <item quantity="one">%d is already in that calendar and is skipped</item>
+        <item quantity="other">%d are already in that calendar and are skipped</item>
+    </plurals>
+    <string name="import_into">Import into</string>
+    <string name="import_button">Import</string>
+    <plurals name="imported">
+        <item quantity="one">%d event imported</item>
+        <item quantity="other">%d events imported</item>
+    </plurals>
+    <string name="import_error">That isn\'t a valid .ics file, or it\'s too large.</string>
+    <string name="calendar_saved">Saved</string>
 </resources>

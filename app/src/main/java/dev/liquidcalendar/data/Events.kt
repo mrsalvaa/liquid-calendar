@@ -5,6 +5,7 @@ import dev.liquidcalendar.core.ics.EventDraft
 import dev.liquidcalendar.core.ics.Ics
 import dev.liquidcalendar.core.ics.IcsException
 import dev.liquidcalendar.core.ics.IcsWriter
+import dev.liquidcalendar.core.ics.ImportedEvent
 import dev.liquidcalendar.core.ics.Moment
 import dev.liquidcalendar.core.ics.Series
 import dev.liquidcalendar.core.ics.SeriesScope
@@ -16,6 +17,9 @@ import dev.liquidcalendar.sync.SyncScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.ZoneId
+import java.util.UUID
+
+private val SAFE_NAME = Regex("[A-Za-z0-9._-]{1,120}")
 
 /** Por qué no se puede editar o borrar un evento (null = se puede). */
 enum class EditBlock {
@@ -127,14 +131,30 @@ object Events {
         if (!calendar.local) SyncScheduler.pushSoon()
     }
 
+    /**
+     * Importa eventos de un .ics salteando los UID que ya están en el calendario (sin pisar nada).
+     * Devuelve cuántos se agregaron. En un calendario sincronizado quedan en la cola para subirse.
+     */
+    suspend fun importInto(calendar: CalendarInfo, events: List<ImportedEvent>): Int = withContext(Dispatchers.IO) {
+        var added = 0
+        for (e in events) {
+            if (Repo.event(calendar.id, e.uid) != null) continue
+            writeNew(calendar, e.uid, e.ics, e.summary, schedule = false)
+            added++
+        }
+        if (added > 0 && !calendar.local) SyncScheduler.pushSoon()
+        added
+    }
+
     private fun writeNew(calendar: CalendarInfo, uid: String, ics: String, summary: String?, schedule: Boolean = true, dependsOn: Long? = null) {
         if (calendar.local) {
             Repo.putEvent(calendar.id, uid, null, null, ics)
             return
         }
         val base = Repo.calendarUrl(calendar.id) ?: return
-        // Nombre del archivo: solo la parte aleatoria del UID (sin "@").
-        val url = base + uid.substringBefore('@') + ".ics"
+        // Nombre del archivo: la parte del UID antes de "@" si es segura; si no (UID importados), uno aleatorio.
+        val name = uid.substringBefore('@').takeIf { it.matches(SAFE_NAME) } ?: UUID.randomUUID().toString()
+        val url = "$base$name.ics"
         Repo.putEvent(calendar.id, uid, url, null, ics)
         Repo.enqueue(calendar.id, PendingChange(0, base, uid, ChangeKind.CREATE, url, ics, null, dependsOn = dependsOn), summary)
         if (schedule) SyncScheduler.pushSoon()
