@@ -377,7 +377,7 @@ fun GlassNavBar(
                         verticalArrangement = Arrangement.Center,
                     ) {
                         Icon(
-                            item.icon, null, Modifier.size(24.dp),
+                            styled(item.icon), null, Modifier.size(24.dp),
                             tint = if (active) p.accentFg else p.contentSecondary,
                         )
                         Text(
@@ -423,7 +423,7 @@ fun FlatNavBar(items: List<NavItem>, selected: Int, onSelect: (Int) -> Unit, mod
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Icon(item.icon, null, Modifier.size(24.dp), tint = if (active) p.accentFg else p.contentSecondary)
+                    Icon(styled(item.icon), null, Modifier.size(24.dp), tint = if (active) p.accentFg else p.contentSecondary)
                     Text(
                         item.label,
                         Modifier.padding(top = 2.dp),
@@ -509,7 +509,7 @@ fun BoxScope.ActionSheetHost(spec: SheetSpec?, onDismiss: () -> Unit) {
                             .padding(horizontal = 24.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(action.icon, null, Modifier.size(22.dp), tint = color)
+                        Icon(styled(action.icon), null, Modifier.size(22.dp), tint = color)
                         Box(Modifier.width(16.dp))
                         Text(action.label, fontSize = 16.sp, color = color)
                     }

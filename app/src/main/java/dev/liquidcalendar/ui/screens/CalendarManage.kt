@@ -77,6 +77,7 @@ import dev.liquidcalendar.ui.glass.GlassCard
 import dev.liquidcalendar.ui.glass.GlassTextField
 import dev.liquidcalendar.ui.glass.LocalDialog
 import dev.liquidcalendar.ui.glass.LocalGlass
+import dev.liquidcalendar.ui.glass.styled
 import dev.liquidcalendar.ui.glass.SectionLabel
 import dev.liquidcalendar.ui.glass.muted
 import dev.liquidcalendar.ui.screens.views.CalendarBadge
@@ -466,7 +467,7 @@ fun ImportScreen(preview: ImportPreview, padding: PaddingValues, onBack: () -> U
                         },
                     ) {
                         Icon(
-                            if (c.id == chosen?.id) Icons.Rounded.RadioButtonChecked else Icons.Rounded.RadioButtonUnchecked,
+                            styled(if (c.id == chosen?.id) Icons.Rounded.RadioButtonChecked else Icons.Rounded.RadioButtonUnchecked),
                             null,
                             tint = if (c.id == chosen?.id) p.accent else p.contentSecondary,
                         )

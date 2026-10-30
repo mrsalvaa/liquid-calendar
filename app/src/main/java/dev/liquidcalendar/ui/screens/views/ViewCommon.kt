@@ -52,6 +52,7 @@ import dev.liquidcalendar.data.Repo
 import dev.liquidcalendar.ui.glass.GlassChip
 import dev.liquidcalendar.ui.glass.GlassIconButton
 import dev.liquidcalendar.ui.glass.LocalGlass
+import dev.liquidcalendar.ui.glass.styled
 import dev.liquidcalendar.ui.glass.TitleTopPadding
 import dev.liquidcalendar.util.longDate
 import dev.liquidcalendar.util.str
@@ -181,12 +182,14 @@ fun CalendarBadge(c: CalendarInfo, modifier: Modifier = Modifier, showName: Bool
 @Composable
 fun OriginIcon(c: CalendarInfo, size: Int = 14) {
     Icon(
-        when {
-            c.local -> Icons.Rounded.PhoneAndroid
-            c.subscription -> Icons.Rounded.RssFeed
-            c.missing -> Icons.Rounded.CloudOff
-            else -> Icons.Rounded.Cloud
-        },
+        styled(
+            when {
+                c.local -> Icons.Rounded.PhoneAndroid
+                c.subscription -> Icons.Rounded.RssFeed
+                c.missing -> Icons.Rounded.CloudOff
+                else -> Icons.Rounded.Cloud
+            },
+        ),
         null,
         Modifier.size(size.dp),
         tint = LocalGlass.current.contentSecondary,
@@ -197,7 +200,7 @@ fun OriginIcon(c: CalendarInfo, size: Int = 14) {
 @Composable
 fun OriginIcon(local: Boolean, size: Int = 14) {
     Icon(
-        if (local) Icons.Rounded.PhoneAndroid else Icons.Rounded.Cloud,
+        styled(if (local) Icons.Rounded.PhoneAndroid else Icons.Rounded.Cloud),
         null,
         Modifier.size(size.dp),
         tint = LocalGlass.current.contentSecondary,

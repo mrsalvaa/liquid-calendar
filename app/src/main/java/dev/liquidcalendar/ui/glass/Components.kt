@@ -382,7 +382,7 @@ fun GlassIconButton(
         onClick = if (enabled) onClick else null,
     ) {
         Icon(
-            icon,
+            styled(icon),
             contentDescription,
             Modifier.align(Alignment.Center).size(size * 0.45f),
             tint = if (prominent) p.onAccent else p.content,
@@ -430,7 +430,7 @@ fun GlassButton(
             horizontalArrangement = Arrangement.Center,
         ) {
             if (icon != null) {
-                Icon(icon, null, Modifier.size(20.dp), tint = textColor)
+                Icon(styled(icon), null, Modifier.size(20.dp), tint = textColor)
                 Spacer(Modifier.width(8.dp))
             }
             Text(text, color = textColor, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
