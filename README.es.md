@@ -9,7 +9,8 @@ Calendario CalDAV libre para Android, pensado para un servidor propio como
 [Liquid Clock](https://github.com/mrsalvaa/liquid-clock) y
 [Liquid Gallery](https://github.com/mrsalvaa/liquid-gallery): superficies que refractan lo que
 tienen detrás (gracias a [Backdrop](https://github.com/Kyant0/AndroidLiquidGlass)) y botones que
-se aplastan como una gota.
+se aplastan como una gota. Si preferís algo más sobrio, en Ajustes podés pasar al estilo Sólido:
+tarjetas opacas, esquinas chicas e íconos de líneas.
 
 Sin publicidad, sin telemetría y sin servicios de Google. Solo se conecta a tu servidor y a las
 suscripciones que agregues vos. Licencia GPL-3.0.

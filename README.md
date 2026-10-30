@@ -9,7 +9,8 @@ A free CalDAV calendar for Android, made for a self-hosted server such as
 [Liquid Clock](https://github.com/mrsalvaa/liquid-clock) and
 [Liquid Gallery](https://github.com/mrsalvaa/liquid-gallery): surfaces that refract what's behind
 them (thanks to [Backdrop](https://github.com/Kyant0/AndroidLiquidGlass)) and buttons that squish
-like a droplet.
+like a droplet. If you'd rather have something plainer, Settings has a Solid style: opaque cards,
+small corners and outline icons.
 
 No ads, no telemetry and no Google services. It only talks to your server and to the
 subscriptions you add yourself. Licensed under GPL-3.0.
