@@ -49,6 +49,9 @@ import dev.liquidcalendar.ui.glass.GlassChip
 import dev.liquidcalendar.ui.glass.GlassSwitch
 import dev.liquidcalendar.ui.glass.GlassTextField
 import dev.liquidcalendar.ui.glass.LocalDialog
+import dev.liquidcalendar.ui.glass.LocalActionSheet
+import dev.liquidcalendar.core.ics.Moment
+import androidx.compose.runtime.rememberCoroutineScope
 import dev.liquidcalendar.ui.glass.LocalGlass
 import dev.liquidcalendar.ui.glass.SettingRow
 import dev.liquidcalendar.ui.screens.views.DeviceClock
@@ -68,13 +71,16 @@ import java.time.ZonedDateTime
 /** Qué se edita: un evento nuevo (en [day]) o uno existente con su borrador. */
 sealed interface EditTarget {
     data class New(val day: LocalDate) : EditTarget
-    data class Existing(val calendar: CalendarInfo, val uid: String, val before: EventDraft) : EditTarget
+    /** [occurrence] no nulo = es una ocurrencia de una serie (al guardar se elige el alcance). */
+    data class Existing(val calendar: CalendarInfo, val uid: String, val before: EventDraft, val occurrence: Moment? = null) : EditTarget
 }
 
 @Composable
 fun EventEditScreen(target: EditTarget, clock: DeviceClock, weekStart: DayOfWeek, padding: PaddingValues, onBack: () -> Unit, onSaved: () -> Unit) {
     val p = LocalGlass.current
     val dialog = LocalDialog.current
+    val sheet = LocalActionSheet.current
+    val uiScope = rememberCoroutineScope()
     val zone = clock.zone
     val writable by produceState<List<CalendarInfo>?>(null) {
         value = withContext(Dispatchers.IO) { Repo.calendarInfos().values.filter { !it.readOnly }.sortedWith(compareBy({ !it.local }, { it.name })) }
@@ -109,6 +115,8 @@ fun EventEditScreen(target: EditTarget, clock: DeviceClock, weekStart: DayOfWeek
     var endDate by remember { mutableStateOf(initial.endDate) }
     var endTime by remember { mutableStateOf(initial.endTime) }
     var chosen by remember { mutableStateOf(existing?.calendar) }
+    var alarms by remember { mutableStateOf(before?.alarms.orEmpty()) }
+    val isSeries = existing?.occurrence != null
     var error by remember { mutableStateOf<String?>(null) }
     // Si no se tocó la fecha ni la hora, se guarda exactamente el horario original (rearmarlo
     // desde la hora local podría moverlo en la hora repetida del cambio de horario).
@@ -150,7 +158,7 @@ fun EventEditScreen(target: EditTarget, clock: DeviceClock, weekStart: DayOfWeek
             error = str(R.string.end_before_start)
             return null
         }
-        return EventDraft(title.trim(), location.trim().ifEmpty { null }, description.trim().ifEmpty { null }, time)
+        return EventDraft(title.trim(), location.trim().ifEmpty { null }, description.trim().ifEmpty { null }, time, alarms)
     }
 
     Column(
@@ -205,9 +213,15 @@ fun EventEditScreen(target: EditTarget, clock: DeviceClock, weekStart: DayOfWeek
         GlassCard {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 GlassTextField(title, { title = it; error = null }, str(R.string.title), keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences))
-                SettingRow(str(R.string.all_day)) { GlassSwitch(allDay, { allDay = it; timeTouched = true; error = null }) }
+                if (isSeries) {
+                    // Una serie no cambia entre todo el día y con horario (cambiaría el tipo de cada ocurrencia).
+                    SettingRow(str(R.string.all_day), subtitle = str(R.string.series_all_day_locked))
+                } else {
+                    SettingRow(str(R.string.all_day)) { GlassSwitch(allDay, { allDay = it; timeTouched = true; error = null }) }
+                }
                 DateTimeRow(str(R.string.starts), startDate, if (allDay) null else startTime, { pickDate(startDate) { d -> val shift = endDate.toEpochDay() - startDate.toEpochDay(); startDate = d; endDate = d.plusDays(shift.coerceAtLeast(0)); timeTouched = true; error = null } }, { pickTime(startTime) { t -> startTime = t; timeTouched = true; error = null } })
                 DateTimeRow(str(R.string.ends), endDate, if (allDay) null else endTime, { pickDate(endDate) { endDate = it; timeTouched = true; error = null } }, { pickTime(endTime) { t -> endTime = t; timeTouched = true; error = null } })
+                RemindersEditor(alarms, allDay, zone) { alarms = it }
                 GlassTextField(location, { location = it }, str(R.string.location), keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences))
                 GlassTextField(description, { description = it }, str(R.string.description), singleLine = false, keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences))
             }
@@ -224,9 +238,18 @@ fun EventEditScreen(target: EditTarget, clock: DeviceClock, weekStart: DayOfWeek
                 {
                     val c = calendar ?: return@GlassButton
                     val d = draft() ?: return@GlassButton
+                    val occurrence = existing?.occurrence
+                    if (existing != null && occurrence != null) {
+                        // Serie: alcance y resumen antes de aplicar nada.
+                        askSeries(sheet, dialog, uiScope, existing.calendar, existing.uid, occurrence, zone, deleting = false, fields = changedFields(existing.before, d)) { scope ->
+                            CalendarApp.scope.launch { Events.updateSeries(existing.calendar, existing.uid, occurrence, scope, existing.before, d, zone) }
+                            onSaved()
+                        }
+                        return@GlassButton
+                    }
                     // Guardar sigue aunque se cierre la pantalla.
                     CalendarApp.scope.launch {
-                        if (existing != null) Events.update(existing.calendar, existing.uid, existing.before, d) else Events.create(c, d)
+                        if (existing != null) Events.update(existing.calendar, existing.uid, existing.before, d, zone) else Events.create(c, d, zone)
                     }
                     onSaved()
                 },

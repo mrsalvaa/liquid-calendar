@@ -26,7 +26,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.liquidcalendar.CalendarApp
-import dev.liquidcalendar.core.ics.EventDraft
+import dev.liquidcalendar.data.Editable
+import dev.liquidcalendar.ui.glass.LocalDialog
+import androidx.compose.runtime.rememberCoroutineScope
 import dev.liquidcalendar.core.sync.ChangeState
 import dev.liquidcalendar.data.EditBlock
 import dev.liquidcalendar.data.Events
@@ -59,7 +61,9 @@ fun EventDetailScreen(item: AgendaItem, clock: DeviceClock, padding: PaddingValu
     val occ = item.occurrence
     val sheet = LocalActionSheet.current
     val version by Repo.version.collectAsStateWithLifecycle()
-    val editable by produceState<Pair<EventDraft?, EditBlock?>?>(null, version) { value = Events.draftFor(item, clock.zone) }
+    val editable by produceState<Pair<Editable?, EditBlock?>?>(null, version) { value = Events.editable(item, clock.zone) }
+    val dialog = LocalDialog.current
+    val uiScope = rememberCoroutineScope()
     val change by produceState<Repo.ChangeRow?>(null, version) {
         value = withContext(Dispatchers.IO) { Repo.changeFor(item.calendar.id, occ.uid) }
     }
@@ -119,6 +123,13 @@ fun EventDetailScreen(item: AgendaItem, clock: DeviceClock, padding: PaddingValu
             GlassCard { SelectionContainer { Text(occ.description!!, fontSize = 15.sp) } }
         }
 
+        SectionLabel(str(R.string.reminders))
+        GlassCard {
+            val allDay = occ.time is When.AllDay
+            if (occ.alarms.isEmpty()) Text(str(R.string.no_reminders), fontSize = 14.sp, color = p.contentSecondary)
+            occ.alarms.forEach { Text(alarmLabel(it, allDay, clock.zone), fontSize = 15.sp) }
+        }
+
         SectionLabel(str(R.string.calendar_label))
         GlassCard {
             CalendarBadge(item.calendar)
@@ -135,7 +146,6 @@ fun EventDetailScreen(item: AgendaItem, clock: DeviceClock, padding: PaddingValu
                     Text(
                         str(
                             when (e.second) {
-                                EditBlock.SERIES -> R.string.series_read_only
                                 EditBlock.READ_ONLY -> R.string.read_only_calendar
                                 EditBlock.UNRESOLVED -> R.string.unresolved_change
                                 else -> R.string.err_generic
@@ -146,11 +156,25 @@ fun EventDetailScreen(item: AgendaItem, clock: DeviceClock, padding: PaddingValu
                     )
                 }
             }
-            else -> Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GlassButton(str(R.string.edit), { onEdit(EditTarget.Existing(item.calendar, occ.uid, e.first!!)) }, Modifier.weight(1f), icon = Icons.Rounded.Edit)
+            else -> Column {
+                val ed = e.first!!
+                if (ed.isSeries) {
+                    GlassCard(Modifier.padding(top = 12.dp)) { Text(str(R.string.series_notice), fontSize = 14.sp, color = p.contentSecondary) }
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                GlassButton(str(R.string.edit), { onEdit(EditTarget.Existing(item.calendar, occ.uid, ed.draft, ed.occurrence)) }, Modifier.weight(1f), icon = Icons.Rounded.Edit)
                 GlassButton(
                     str(R.string.delete),
                     {
+                        val occurrence = ed.occurrence
+                        if (occurrence != null) {
+                            // Serie: alcance y resumen (cuántas ocurrencias, dónde) antes de borrar.
+                            askSeries(sheet, dialog, uiScope, item.calendar, occ.uid, occurrence, clock.zone, deleting = true, fields = null) { scope ->
+                                CalendarApp.scope.launch { Events.deleteSeries(item.calendar, occ.uid, occurrence, scope, occ.summary, clock.zone) }
+                                onBack()
+                            }
+                            return@GlassButton
+                        }
                         sheet(
                             SheetSpec(
                                 title = str(R.string.delete_title),
@@ -169,6 +193,7 @@ fun EventDetailScreen(item: AgendaItem, clock: DeviceClock, padding: PaddingValu
                     icon = Icons.Rounded.DeleteOutline,
                     danger = true,
                 )
+                }
             }
         }
         Spacer(Modifier.height(8.dp))

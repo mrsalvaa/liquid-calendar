@@ -71,6 +71,7 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
         db.execSQL("CREATE INDEX event_url ON event (calendar_id, url)")
         db.execSQL(RANGE_INDEX)
         createV3(db)
+        createV4(db)
 
         db.insert("account", null, ContentValues().apply {
             put("id", LOCAL_ACCOUNT)
@@ -100,6 +101,16 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
             }
         }
         if (oldVersion < 3) createV3(db)
+        if (oldVersion < 4) createV4(db)
+    }
+
+    /**
+     * v4: copia del iCalendar como estaba antes del primer cambio sin confirmar, para deshacer o
+     * reintentar sin perder nada (por ejemplo, una serie entera) hasta que el servidor lo acepte.
+     */
+    private fun createV4(db: SQLiteDatabase) {
+        db.execSQL("ALTER TABLE change ADD COLUMN original_ics TEXT")
+        db.execSQL("ALTER TABLE change ADD COLUMN original_etag TEXT")
     }
 
     /**
@@ -131,7 +142,7 @@ class Db(context: Context) : SQLiteOpenHelper(context, NAME, null, VERSION) {
 
     companion object {
         const val NAME = "calendar.db"
-        const val VERSION = 3
+        const val VERSION = 4
         const val LOCAL_ACCOUNT = 1L
         const val KIND_LOCAL = "local"
         const val KIND_CALDAV = "caldav"

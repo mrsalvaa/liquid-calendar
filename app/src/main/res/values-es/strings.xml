@@ -184,7 +184,6 @@
     <string name="title_required">Escribí un título.</string>
     <string name="end_before_start">El final no puede ser antes del comienzo.</string>
     <string name="read_only_calendar">Este calendario es de solo lectura: no se pueden crear ni cambiar eventos en él.</string>
-    <string name="series_read_only">Este evento se repite. Por ahora las series son de solo lectura: editar o borrar una podría cambiar las demás repeticiones, así que todavía no se permite.</string>
     <string name="unresolved_change">Este evento tiene un cambio que no se pudo subir. Resolvelo primero en Cambios pendientes.</string>
     <string name="delete_title">¿Borrar este evento?</string>
     <string name="delete_local">Se borra de este dispositivo. Este calendario no se sincroniza con ningún servidor.</string>
@@ -222,4 +221,75 @@
     <string name="sync_every_min">Cada %d min</string>
     <string name="sync_every_h">Cada %d h</string>
     <string name="sync_interval_hint">Solo con conexión. Después de una contraseña rechazada no se reintenta nada.</string>
+
+    <!-- Series -->
+    <string name="scope_this">Solo esta</string>
+    <string name="scope_following">Esta y las siguientes</string>
+    <string name="scope_all">Todas</string>
+    <string name="series_edit_title">¿Qué ocurrencias cambian?</string>
+    <string name="series_delete_title">¿Qué ocurrencias se borran?</string>
+    <string name="confirm">Confirmar</string>
+    <string name="confirm_changes">Revisá el cambio</string>
+    <string name="summary_fields">Cambia: %s.</string>
+    <string name="field_title">título</string>
+    <string name="field_time">horario</string>
+    <string name="field_location">ubicación</string>
+    <string name="field_description">descripción</string>
+    <string name="field_alarms">recordatorios</string>
+    <string name="summary_no_changes">No cambió nada.</string>
+    <plurals name="summary_affected">
+        <item quantity="one">Afecta a %d ocurrencia.</item>
+        <item quantity="many">Afecta a %d ocurrencias.</item>
+        <item quantity="other">Afecta a %d ocurrencias.</item>
+    </plurals>
+    <string name="summary_endless">Afecta a todas las ocurrencias desde acá (la serie no tiene fin).</string>
+    <string name="summary_split">La serie se divide: las ocurrencias anteriores quedan como estaban y las demás pasan a una serie nueva.</string>
+    <string name="where_local">Solo en este dispositivo.</string>
+    <string name="where_synced">En este dispositivo y en el servidor %s, en la próxima sincronización.</string>
+    <string name="series_all_day_locked">Una serie no puede pasar de todo el día a con horario (ni al revés).</string>
+    <string name="series_notice">Este evento se repite. Al guardar o borrar elegís si es solo esta ocurrencia, esta y las siguientes, o todas.</string>
+
+    <!-- Recordatorios -->
+    <string name="reminders">Recordatorios</string>
+    <string name="add_reminder">Agregar recordatorio</string>
+    <string name="remove_reminder">Quitar recordatorio: %s</string>
+    <string name="no_reminders">Sin recordatorios</string>
+    <string name="alarm_at_start">Al comenzar</string>
+    <string name="alarm_at_end">Al terminar</string>
+    <string name="alarm_before">%s antes</string>
+    <string name="alarm_after">%s después</string>
+    <string name="alarm_before_end">%s antes de terminar</string>
+    <string name="alarm_on_day">El mismo día a las %s</string>
+    <string name="alarm_days_before_at">%1$s antes a las %2$s</string>
+    <string name="alarm_at">El %s</string>
+    <plurals name="minutes">
+        <item quantity="one">%d minuto</item>
+        <item quantity="many">%d minutos</item>
+        <item quantity="other">%d minutos</item>
+    </plurals>
+    <plurals name="hours">
+        <item quantity="one">%d hora</item>
+        <item quantity="many">%d horas</item>
+        <item quantity="other">%d horas</item>
+    </plurals>
+    <plurals name="days">
+        <item quantity="one">%d día</item>
+        <item quantity="many">%d días</item>
+        <item quantity="other">%d días</item>
+    </plurals>
+    <plurals name="weeks">
+        <item quantity="one">%d semana</item>
+        <item quantity="many">%d semanas</item>
+        <item quantity="other">%d semanas</item>
+    </plurals>
+    <string name="reminder_channel">Recordatorios de eventos</string>
+    <string name="reminder_hidden">Recordatorio de un evento</string>
+    <string name="reminders_enabled">Mostrar recordatorios</string>
+    <string name="reminders_enabled_hint">Avisos en este dispositivo para los eventos con recordatorios.</string>
+    <string name="reminders_exact">Hora exacta</string>
+    <string name="reminders_exact_hint">Le pide a Android permiso para programar alarmas exactas. Sin él, Android puede demorar un aviso unos minutos para ahorrar batería.</string>
+    <string name="reminders_exact_denied">Se permite solo desde los ajustes del sistema: tocá para abrirlos.</string>
+    <string name="reminders_lock_screen">Mostrar el detalle en la pantalla de bloqueo</string>
+    <string name="reminders_lock_screen_hint">Desactivado: la pantalla de bloqueo solo dice que hay un recordatorio, sin el evento.</string>
+    <string name="reminders_no_permission">Las notificaciones de esta app están desactivadas en los ajustes de Android.</string>
 </resources>

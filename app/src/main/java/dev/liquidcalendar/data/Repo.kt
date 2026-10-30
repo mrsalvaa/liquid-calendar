@@ -306,7 +306,15 @@ object Repo {
             buildSet { while (c.moveToNext()) add(c.getString(0)) }
         }
 
-    data class ChangeRow(val change: PendingChange, val calendarId: Long, val summary: String?, val createdAt: Long)
+    data class ChangeRow(
+        val change: PendingChange,
+        val calendarId: Long,
+        val summary: String?,
+        val createdAt: Long,
+        /** Cómo estaba el evento antes del primer cambio sin confirmar (para deshacer). */
+        val originalIcs: String? = null,
+        val originalEtag: String? = null,
+    )
 
     private fun Cursor.change(): ChangeRow = ChangeRow(
         PendingChange(
@@ -325,6 +333,8 @@ object Repo {
         calendarId = long("calendar_id")!!,
         summary = str("summary"),
         createdAt = long("created_at")!!,
+        originalIcs = str("original_ics"),
+        originalEtag = str("original_etag"),
     )
 
     private const val CHANGE_SELECT = "SELECT ch.*, c.url AS calendar_url FROM change ch JOIN calendar c ON c.id = ch.calendar_id"
@@ -342,14 +352,19 @@ object Repo {
      * Agrega un cambio a la cola, combinándolo con uno anterior del mismo evento que todavía no
      * salió (crear + editar = crear con lo último, crear + borrar = nada, etc.).
      */
-    fun enqueue(calendarId: Long, change: PendingChange, summary: String?) {
+    fun enqueue(calendarId: Long, change: PendingChange, summary: String?, originalIcs: String? = null, originalEtag: String? = null) {
         db.writableDatabase.transaction {
             val previous = rawQuery(
                 "SELECT ch.*, c.url AS calendar_url FROM change ch JOIN calendar c ON c.id = ch.calendar_id WHERE ch.calendar_id = ? AND ch.uid = ? AND ch.state = 'QUEUED' ORDER BY ch.id DESC LIMIT 1",
                 arrayOf(calendarId.toString(), change.uid),
             ).use { c -> if (c.moveToFirst()) c.change() else null }
             if (previous == null) {
-                insertOrThrow("change", null, changeValues(calendarId, change, summary).apply { put("created_at", System.currentTimeMillis()) })
+                insertOrThrow("change", null, changeValues(calendarId, change, summary).apply {
+                    put("created_at", System.currentTimeMillis())
+                    // La versión de antes del primer cambio: se conserva aunque se encolen más cambios.
+                    if (originalIcs != null) put("original_ics", originalIcs)
+                    if (originalEtag != null) put("original_etag", originalEtag)
+                })
             } else {
                 val merged = ChangeQueue.merge(previous.change, change).result
                 if (merged == null) {
@@ -437,6 +452,16 @@ object Repo {
             val args = arrayOf(row.calendarId.toString(), row.change.uid)
             if (row.change.kind == ChangeKind.CREATE) {
                 delete("event", "calendar_id = ? AND uid = ?", args)
+            } else if (row.originalIcs != null) {
+                // Vuelve al instante a la versión de antes del cambio (la que se guardó en la cola).
+                val (start, end) = Db.eventBounds(row.originalIcs)
+                update("event", ContentValues().apply {
+                    put("deleted", 0)
+                    put("ics", row.originalIcs)
+                    if (row.originalEtag != null) put("etag", row.originalEtag) else putNull("etag")
+                    if (start != null) put("start_ms", start) else putNull("start_ms")
+                    if (end != null) put("end_ms", end) else putNull("end_ms")
+                }, "calendar_id = ? AND uid = ?", args)
             } else {
                 update("event", ContentValues().apply { put("deleted", 0); putNull("etag") }, "calendar_id = ? AND uid = ?", args)
             }

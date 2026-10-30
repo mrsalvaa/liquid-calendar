@@ -179,7 +179,6 @@
     <string name="title_required">Write a title.</string>
     <string name="end_before_start">The end can\'t be before the start.</string>
     <string name="read_only_calendar">This calendar is read-only: you can\'t create or change events in it.</string>
-    <string name="series_read_only">This event repeats. Series are read-only in this version: editing or deleting one could change the other repetitions, so it\'s not allowed yet.</string>
     <string name="unresolved_change">This event has a change that couldn\'t be uploaded. Resolve it in Pending changes first.</string>
     <string name="delete_title">Delete this event?</string>
     <string name="delete_local">It\'s deleted from this device. This calendar isn\'t synced with any server.</string>
@@ -216,4 +215,70 @@
     <string name="sync_every_min">Every %d min</string>
     <string name="sync_every_h">Every %d h</string>
     <string name="sync_interval_hint">Only with a connection. Nothing is retried after a rejected password.</string>
+
+    <!-- Series -->
+    <string name="scope_this">Only this one</string>
+    <string name="scope_following">This and following</string>
+    <string name="scope_all">All of them</string>
+    <string name="series_edit_title">Which occurrences change?</string>
+    <string name="series_delete_title">Which occurrences are deleted?</string>
+    <string name="confirm">Confirm</string>
+    <string name="confirm_changes">Review the change</string>
+    <string name="summary_fields">Changes: %s.</string>
+    <string name="field_title">title</string>
+    <string name="field_time">time</string>
+    <string name="field_location">location</string>
+    <string name="field_description">description</string>
+    <string name="field_alarms">reminders</string>
+    <string name="summary_no_changes">Nothing changed.</string>
+    <plurals name="summary_affected">
+        <item quantity="one">It affects %d occurrence.</item>
+        <item quantity="other">It affects %d occurrences.</item>
+    </plurals>
+    <string name="summary_endless">It affects every occurrence from here on (the series has no end).</string>
+    <string name="summary_split">The series is split: the earlier occurrences stay as they were and the rest become a new series.</string>
+    <string name="where_local">Only on this device.</string>
+    <string name="where_synced">On this device and on the server %s, on the next sync.</string>
+    <string name="series_all_day_locked">A series can\'t switch between all-day and timed.</string>
+    <string name="series_notice">This event repeats. When you save or delete, you choose whether it applies to this occurrence only, this and the following ones, or all of them.</string>
+
+    <!-- Recordatorios -->
+    <string name="reminders">Reminders</string>
+    <string name="add_reminder">Add reminder</string>
+    <string name="remove_reminder">Remove reminder: %s</string>
+    <string name="no_reminders">No reminders</string>
+    <string name="alarm_at_start">When it starts</string>
+    <string name="alarm_at_end">When it ends</string>
+    <string name="alarm_before">%s before</string>
+    <string name="alarm_after">%s after</string>
+    <string name="alarm_before_end">%s before it ends</string>
+    <string name="alarm_on_day">On the day at %s</string>
+    <string name="alarm_days_before_at">%1$s before at %2$s</string>
+    <string name="alarm_at">On %s</string>
+    <plurals name="minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <plurals name="hours">
+        <item quantity="one">%d hour</item>
+        <item quantity="other">%d hours</item>
+    </plurals>
+    <plurals name="days">
+        <item quantity="one">%d day</item>
+        <item quantity="other">%d days</item>
+    </plurals>
+    <plurals name="weeks">
+        <item quantity="one">%d week</item>
+        <item quantity="other">%d weeks</item>
+    </plurals>
+    <string name="reminder_channel">Event reminders</string>
+    <string name="reminder_hidden">Event reminder</string>
+    <string name="reminders_enabled">Show reminders</string>
+    <string name="reminders_enabled_hint">Notifications on this device for events with reminders.</string>
+    <string name="reminders_exact">Exact time</string>
+    <string name="reminders_exact_hint">Asks Android for permission to schedule exact alarms. Without it, Android may delay a reminder by a few minutes to save battery.</string>
+    <string name="reminders_exact_denied">Allowed only in system settings: tap to open them.</string>
+    <string name="reminders_lock_screen">Show details on the lock screen</string>
+    <string name="reminders_lock_screen_hint">Off: the lock screen only says there\'s a reminder, without the event.</string>
+    <string name="reminders_no_permission">Notifications are off for this app in Android settings.</string>
 </resources>

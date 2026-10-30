@@ -1,9 +1,14 @@
 package dev.liquidcalendar.data
 
+import dev.liquidcalendar.core.ics.DraftTime
 import dev.liquidcalendar.core.ics.EventDraft
 import dev.liquidcalendar.core.ics.Ics
 import dev.liquidcalendar.core.ics.IcsException
 import dev.liquidcalendar.core.ics.IcsWriter
+import dev.liquidcalendar.core.ics.Moment
+import dev.liquidcalendar.core.ics.Series
+import dev.liquidcalendar.core.ics.SeriesScope
+import dev.liquidcalendar.core.ics.When
 import dev.liquidcalendar.core.sync.ChangeKind
 import dev.liquidcalendar.core.sync.ChangeState
 import dev.liquidcalendar.core.sync.PendingChange
@@ -14,8 +19,6 @@ import java.time.ZoneId
 
 /** Por qué no se puede editar o borrar un evento (null = se puede). */
 enum class EditBlock {
-    /** Serie recurrente: solo lectura hasta que se pueda editar una ocurrencia sin tocar las demás. */
-    SERIES,
     READ_ONLY,
 
     /** Tiene un cambio en conflicto o fallido: primero hay que resolverlo. */
@@ -23,13 +26,18 @@ enum class EditBlock {
     NOT_FOUND,
 }
 
+/** Lo que el formulario necesita para editar: el borrador y, si es una serie, qué ocurrencia es. */
+data class Editable(val draft: EventDraft, val occurrence: Moment?) {
+    val isSeries: Boolean get() = occurrence != null
+}
+
 /**
  * Crear, editar y borrar. En un calendario local el cambio va directo a la base y nunca toca un
- * servidor; en uno sincronizado se aplica en el celu al instante y queda en la cola para subirse.
+ * servidor; en uno sincronizado se aplica en el celu al instante y queda en la cola para subirse,
+ * con una copia de cómo estaba antes hasta que el servidor lo confirme.
  */
 object Events {
-    /** Borrador del evento para el formulario, o el motivo por el que no se puede editar. */
-    suspend fun draftFor(item: AgendaItem, zone: ZoneId): Pair<EventDraft?, EditBlock?> = withContext(Dispatchers.IO) {
+    suspend fun editable(item: AgendaItem, zone: ZoneId): Pair<Editable?, EditBlock?> = withContext(Dispatchers.IO) {
         if (item.calendar.readOnly) return@withContext null to EditBlock.READ_ONLY
         val row = Repo.event(item.calendar.id, item.occurrence.uid) ?: return@withContext null to EditBlock.NOT_FOUND
         val resource = try {
@@ -37,42 +45,56 @@ object Events {
         } catch (e: IcsException) {
             return@withContext null to EditBlock.NOT_FOUND
         }
-        if (IcsWriter.isSeries(resource)) return@withContext null to EditBlock.SERIES
         val change = Repo.changeFor(item.calendar.id, item.occurrence.uid)
         if (change != null && change.change.state != ChangeState.QUEUED) return@withContext null to EditBlock.UNRESOLVED
-        IcsWriter.draftOf(resource, item.occurrence.uid, zone) to null
+        if (!IcsWriter.isSeries(resource)) {
+            val draft = IcsWriter.draftOf(resource, item.occurrence.uid, zone) ?: return@withContext null to EditBlock.NOT_FOUND
+            return@withContext Editable(draft, null) to null
+        }
+        // Serie: el borrador es el de esta ocurrencia (su horario, sus textos y sus recordatorios).
+        val occ = item.occurrence
+        val time = when (val t = occ.time) {
+            is When.AllDay -> DraftTime.AllDay(t.first, t.endExclusive.minusDays(1))
+            is When.Timed -> DraftTime.Timed(t.start, t.end)
+        }
+        Editable(EventDraft(occ.summary.orEmpty(), occ.location, occ.description, time, occ.alarms), occ.original ?: return@withContext null to EditBlock.NOT_FOUND) to null
     }
 
-    suspend fun create(calendar: CalendarInfo, draft: EventDraft) = withContext(Dispatchers.IO) {
+    /** Cuántas ocurrencias toca cada alcance (null = sin fin). */
+    suspend fun affected(calendar: CalendarInfo, uid: String, occurrence: Moment, scope: SeriesScope, zone: ZoneId): Int? = withContext(Dispatchers.Default) {
+        val row = withContext(Dispatchers.IO) { Repo.event(calendar.id, uid) } ?: return@withContext 0
+        Series.affected(Ics.parseResource(row.ics), uid, occurrence, scope, zone)
+    }
+
+    suspend fun create(calendar: CalendarInfo, draft: EventDraft, zone: ZoneId) = withContext(Dispatchers.IO) {
         require(!calendar.readOnly)
         val uid = IcsWriter.newUid()
-        val ics = IcsWriter.create(uid, draft)
-        if (calendar.local) {
-            Repo.putEvent(calendar.id, uid, null, null, ics)
-            return@withContext
-        }
-        val base = Repo.calendarUrl(calendar.id) ?: return@withContext
-        // Nombre del archivo: solo la parte aleatoria del UID (sin "@").
-        val url = base + uid.substringBefore('@') + ".ics"
-        Repo.putEvent(calendar.id, uid, url, null, ics)
-        Repo.enqueue(calendar.id, PendingChange(0, base, uid, ChangeKind.CREATE, url, ics, null), draft.summary)
-        SyncScheduler.pushSoon()
+        val ics = IcsWriter.create(uid, draft, zone = zone)
+        writeNew(calendar, uid, ics, draft.summary)
     }
 
-    suspend fun update(calendar: CalendarInfo, uid: String, before: EventDraft, draft: EventDraft) = withContext(Dispatchers.IO) {
+    suspend fun update(calendar: CalendarInfo, uid: String, before: EventDraft, draft: EventDraft, zone: ZoneId) = withContext(Dispatchers.IO) {
         require(!calendar.readOnly)
         val row = Repo.event(calendar.id, uid) ?: return@withContext
-        val ics = IcsWriter.patch(row.ics, uid, before, draft)
-        if (calendar.local) {
-            Repo.putEvent(calendar.id, uid, null, null, ics)
-            return@withContext
-        }
-        val base = Repo.calendarUrl(calendar.id) ?: return@withContext
-        // En la caché queda el ETag del servidor (la base del cambio) hasta que se suba.
-        Repo.putEvent(calendar.id, uid, row.url, row.etag, ics)
-        Repo.enqueue(calendar.id, PendingChange(0, base, uid, ChangeKind.UPDATE, row.url ?: (base + uid.substringBefore('@') + ".ics"), ics, row.etag), draft.summary)
-        SyncScheduler.pushSoon()
+        writeExisting(calendar, row, IcsWriter.patch(row.ics, uid, before, draft, zone = zone), draft.summary)
     }
+
+    /** Edita una serie con el alcance elegido (solo esta, esta y las siguientes, todas). */
+    suspend fun updateSeries(calendar: CalendarInfo, uid: String, occurrence: Moment, scope: SeriesScope, before: EventDraft, draft: EventDraft, zone: ZoneId) =
+        withContext(Dispatchers.IO) {
+            require(!calendar.readOnly)
+            val row = Repo.event(calendar.id, uid) ?: return@withContext
+            val result = Series.edit(row.ics, uid, occurrence, scope, before, draft, zone)
+            applySeries(calendar, row, uid, result.original, result.created, draft.summary)
+        }
+
+    suspend fun deleteSeries(calendar: CalendarInfo, uid: String, occurrence: Moment, scope: SeriesScope, summary: String?, zone: ZoneId) =
+        withContext(Dispatchers.IO) {
+            require(!calendar.readOnly)
+            val row = Repo.event(calendar.id, uid) ?: return@withContext
+            val result = Series.delete(row.ics, uid, occurrence, scope, zone)
+            applySeries(calendar, row, uid, result.original, null, summary)
+        }
 
     suspend fun delete(calendar: CalendarInfo, uid: String, summary: String?) = withContext(Dispatchers.IO) {
         require(!calendar.readOnly)
@@ -83,7 +105,56 @@ object Events {
         val row = Repo.event(calendar.id, uid) ?: return@withContext
         val base = Repo.calendarUrl(calendar.id) ?: return@withContext
         Repo.markDeleted(calendar.id, uid)
-        Repo.enqueue(calendar.id, PendingChange(0, base, uid, ChangeKind.DELETE, row.url ?: return@withContext, null, row.etag), summary)
+        Repo.enqueue(calendar.id, PendingChange(0, base, uid, ChangeKind.DELETE, row.url ?: return@withContext, null, row.etag), summary, row.ics, row.etag)
         SyncScheduler.pushSoon()
+    }
+
+    // --- Apoyo ---
+
+    private fun applySeries(calendar: CalendarInfo, row: Repo.EventRow, uid: String, original: String?, created: Pair<String, String>?, summary: String?) {
+        if (original == null) {
+            // La serie entera desaparece (borrar todas, o "esta y las siguientes" desde la primera).
+            if (calendar.local) Repo.removeEvent(calendar.id, uid) else {
+                val base = Repo.calendarUrl(calendar.id) ?: return
+                Repo.markDeleted(calendar.id, uid)
+                Repo.enqueue(calendar.id, PendingChange(0, base, uid, ChangeKind.DELETE, row.url ?: return, null, row.etag), summary, row.ics, row.etag)
+            }
+        } else {
+            writeExisting(calendar, row, original, summary, schedule = false)
+        }
+        // Primero la serie original (cortada) y después la nueva: la cola respeta ese orden.
+        created?.let { (newUid, ics) -> writeNew(calendar, newUid, ics, summary, schedule = false) }
+        if (!calendar.local) SyncScheduler.pushSoon()
+    }
+
+    private fun writeNew(calendar: CalendarInfo, uid: String, ics: String, summary: String?, schedule: Boolean = true) {
+        if (calendar.local) {
+            Repo.putEvent(calendar.id, uid, null, null, ics)
+            return
+        }
+        val base = Repo.calendarUrl(calendar.id) ?: return
+        // Nombre del archivo: solo la parte aleatoria del UID (sin "@").
+        val url = base + uid.substringBefore('@') + ".ics"
+        Repo.putEvent(calendar.id, uid, url, null, ics)
+        Repo.enqueue(calendar.id, PendingChange(0, base, uid, ChangeKind.CREATE, url, ics, null), summary)
+        if (schedule) SyncScheduler.pushSoon()
+    }
+
+    private fun writeExisting(calendar: CalendarInfo, row: Repo.EventRow, ics: String, summary: String?, schedule: Boolean = true) {
+        if (calendar.local) {
+            Repo.putEvent(calendar.id, row.uid, null, null, ics)
+            return
+        }
+        val base = Repo.calendarUrl(calendar.id) ?: return
+        // En la caché queda el ETag del servidor (la base del cambio) hasta que se suba.
+        Repo.putEvent(calendar.id, row.uid, row.url, row.etag, ics)
+        Repo.enqueue(
+            calendar.id,
+            PendingChange(0, base, row.uid, ChangeKind.UPDATE, row.url ?: (base + row.uid.substringBefore('@') + ".ics"), ics, row.etag),
+            summary,
+            originalIcs = row.ics,
+            originalEtag = row.etag,
+        )
+        if (schedule) SyncScheduler.pushSoon()
     }
 }
