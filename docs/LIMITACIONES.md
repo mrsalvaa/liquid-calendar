@@ -2,16 +2,26 @@
 
 Lo que todavía no hace la app o hace de forma parcial. Se actualiza en cada etapa.
 
-## Abiertas después de la etapa 4
+## Resueltas en la etapa 5
+
+- Las series se editan y se borran (solo esta, esta y las siguientes, todas), con resumen previo.
+- Los eventos con hora se escriben con TZID y su VTIMEZONE (antes, en UTC).
+- Las zonas que existen solo dentro del archivo (TZID no IANA) se resuelven también en Android.
+- Un evento flotante editado sigue flotante.
+- Recordatorios: se leen, se muestran, se crean y se editan, con notificaciones locales.
+
+## Abiertas
 
 | # | Limitación | Plan |
 |---|---|---|
-| 1 | Las series (RRULE/RDATE o con excepciones) son de solo lectura: no se editan ni se borran. | Etapa 5 |
-| 2 | Los eventos con hora nuevos se guardan en UTC, sin TZID. Es correcto (no cambian de hora), pero otros clientes no ven la zona de origen. | Etapa 5: TZID + VTIMEZONE |
-| 3 | Una zona que existe solo dentro de la VTIMEZONE del archivo (TZID no IANA) no se resuelve en Android: ical4j no puede registrar zonas propias allí. | Etapa 5 |
-| 4 | Un evento con hora flotante (sin zona) que se edita cambiando el horario pasa a guardarse en UTC. Si no se toca el horario, queda flotante. | Revisar en etapa 5 |
-| 5 | No se puede mover un evento a otro calendario; al editar, el calendario se muestra pero no se cambia. | Pendiente |
-| 6 | El selector de hora va de 5 en 5 minutos: si se abre sobre un evento a las 10:07, se redondea a 10:05 (si no se abre, no cambia). | Pendiente |
-| 7 | Los archivos de ejemplo de DAVx5 y Odysseus de los tests son reconstruidos a partir del formato típico, no capturados de esos clientes. | Sumar ejemplos reales |
-| 8 | No hay recordatorios (VALARM se conservan pero no se muestran ni avisan). | Etapa 5 |
-| 9 | No se pueden crear, renombrar ni borrar calendarios en el servidor, ni importar/exportar .ics ni suscripciones. | Etapa 6 |
+| 1 | Con "todas", mover la serie a otro día de la semana corre el DTSTART pero no cambia el BYDAY de la regla: en una serie "todos los lunes", las ocurrencias siguen siendo los lunes (cambia la hora, no el día). | Pendiente |
+| 2 | Una serie no puede pasar de todo el día a con horario (ni al revés). | Pendiente |
+| 3 | Con "todas", los cambios de título, ubicación o descripción van al evento principal; las excepciones ya existentes conservan los suyos. | Por diseño (como otros clientes) |
+| 4 | No se interpreta RANGE=THISANDFUTURE en el RECURRENCE-ID de excepciones creadas por otros clientes. | Pendiente |
+| 5 | Los recordatorios suenan solo para los calendarios visibles. | Por diseño |
+| 6 | Los recordatorios que crea la app son de tipo aviso (ACTION:DISPLAY). Los de sonido o correo de otros clientes se conservan en el archivo, pero en el dispositivo se avisan como una notificación común. | Pendiente |
+| 7 | Sin "Hora exacta" (permiso que el usuario concede en los ajustes del sistema), Android puede demorar un recordatorio unos minutos. | Por diseño |
+| 8 | No se puede mover un evento a otro calendario. | Pendiente |
+| 9 | El selector de hora va de 5 en 5 minutos (si se abre sobre las 10:07, redondea a 10:05; si no se abre, no cambia). | Pendiente |
+| 10 | Los archivos de ejemplo de DAVx5 y Odysseus de los tests son reconstruidos a partir del formato típico, no capturados de esos clientes. | Sumar ejemplos reales |
+| 11 | No se pueden crear, renombrar ni borrar calendarios en el servidor, ni importar/exportar .ics ni suscripciones. | Etapa 6 |
