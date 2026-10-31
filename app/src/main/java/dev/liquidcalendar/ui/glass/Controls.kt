@@ -124,6 +124,8 @@ fun WheelPicker(
     width: Dp = 84.dp,
     fontSize: Int = 38,
     label: (Int) -> String = { "%02d".format(it) },
+    /** Posición de la rueda para un número escrito con el teclado (null si no vale). */
+    typed: (Int) -> Int? = { it.takeIf { n -> n in 0 until count } },
 ) {
     val p = LocalGlass.current
     val total = if (cyclic) count * 1000 else count
@@ -219,14 +221,14 @@ fun WheelPicker(
         if (editing) {
             WheelInput(
                 initial = label(value),
-                maxDigits = (count - 1).toString().length,
+                maxDigits = label(count - 1).length,
                 fontSize = fontSize,
                 modifier = Modifier.align(Alignment.Center).fillMaxWidth().height(itemHeight),
                 // Lo escrito se aplica mientras se teclea: guardar sin cerrar el teclado ya lo usa.
-                onType = { typed -> typed?.takeIf { it in 0 until count }?.let { onChange(it) } },
-            ) { typed ->
+                onType = { n -> n?.let(typed)?.let { onChange(it) } },
+            ) { n ->
                 editing = false
-                typed?.takeIf { it in 0 until count }?.let { onChange(it) }
+                n?.let(typed)?.let { onChange(it) }
             }
         }
     }

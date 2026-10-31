@@ -2,6 +2,11 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## Sin publicar
+
+### Arreglos
+- Escribir los minutos en el selector de hora ahora los guarda, redondeados al múltiplo de 5 más cercano (escribir 32 pone 30).
+
 ## 1.4.0
 
 ### Novedades

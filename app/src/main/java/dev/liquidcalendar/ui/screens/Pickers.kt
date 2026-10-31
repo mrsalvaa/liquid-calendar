@@ -117,7 +117,14 @@ fun TimePickerContent(initial: LocalTime, onDone: (LocalTime) -> Unit) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
             WheelPicker(count = 24, value = hour, onValueChange = { hour = it })
             WheelColon()
-            WheelPicker(count = 12, value = minuteStep, onValueChange = { minuteStep = it }, label = { "%02d".format(it * 5) })
+            WheelPicker(
+                count = 12,
+                value = minuteStep,
+                onValueChange = { minuteStep = it },
+                label = { "%02d".format(it * 5) },
+                // Se escriben minutos: van al múltiplo de 5 más cercano (58 queda en 55).
+                typed = { m -> if (m < 60) minOf((m + 2) / 5, 11) else null },
+            )
         }
         GlassButton(str(R.string.done), { onDone(LocalTime.of(hour, minuteStep * 5)) }, Modifier.fillMaxWidth().padding(top = 16.dp), prominent = true)
     }
