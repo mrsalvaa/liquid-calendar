@@ -2,6 +2,16 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
+## Unreleased
+
+### New
+- When creating or editing an event you can choose how it repeats: every day, week (on the days you want), month ("on day 15" or "on the third Tuesday") or year, every so many, and until a date or a number of times. In a series, changing the repetition applies to "this and the following ones" or to "all"; the summary warns if changes made to single occurrences are discarded.
+- The details of a repeating event say how it repeats ("Repeats · Every week: Mon, Wed").
+
+### Improved
+- If an event that repeats on a weekday is moved to another day, the repetition moves to the new day.
+- Rules from other apps that the editor can't show are kept as they are.
+
 ## 1.3.0
 
 ### New

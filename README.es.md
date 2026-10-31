@@ -39,8 +39,12 @@ El primer día de la semana se puede elegir; las fechas se muestran como día/me
 
 **Eventos**
 - Crear, editar y borrar eventos, de todo el día o con horario, en cualquier zona horaria.
+- Repeticiones al crear o editar: cada día, semana (con los días que elijas), mes ("el día 15" o
+  "el tercer martes") o año, cada cuántos, y hasta una fecha o una cantidad de veces. Las reglas
+  de otras apps que no entran en esas opciones se conservan tal cual.
 - Series: cambiar o borrar solo este, este y los siguientes, o todos, con un resumen de cuántas
-  ocurrencias cambian antes de confirmar.
+  ocurrencias cambian antes de confirmar. Cambiar la repetición se aplica a este y los
+  siguientes, o a todos.
 - Recordatorios como notificaciones locales. Por defecto, con el celu bloqueado solo se ve
   "Recordatorio de un evento", no el título.
 

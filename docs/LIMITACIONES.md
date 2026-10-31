@@ -98,7 +98,7 @@ Galaxy S24 FE, Android 16, contra Radicale 3.8.3 local con datos de prueba.
 
 | # | Limitación | Plan |
 |---|---|---|
-| 1 | Con "todas", mover la serie a otro día de la semana corre el DTSTART pero no cambia el BYDAY de la regla: en una serie "todos los lunes", las ocurrencias siguen siendo los lunes (cambia la hora, no el día). | Pendiente |
+| 1 | Con "todas", mover la serie a otro día de la semana cambia también la regla si se repetía solo ese día (o "el n-ésimo" de ese día); una regla con varios días elegidos a mano no se mueve. | Resuelta en parte |
 | 2 | Una serie no puede pasar de todo el día a con horario (ni al revés). | Pendiente |
 | 3 | Con "todas", los cambios de título, ubicación o descripción van al evento principal; las excepciones ya existentes conservan los suyos. | Por diseño (como otros clientes) |
 | 4 | No se interpreta RANGE=THISANDFUTURE en el RECURRENCE-ID de excepciones creadas por otros clientes. | Pendiente |
@@ -115,3 +115,4 @@ Galaxy S24 FE, Android 16, contra Radicale 3.8.3 local con datos de prueba.
 | 15 | Si un feed redirige a otro servidor durante una actualización automática, la suscripción queda en error hasta que se abra y se acepte con "Actualizar ahora". | Por diseño |
 | 16 | El aviso de IP de cada suscripción se muestra en su pantalla; en la lista hay uno general. | Por diseño |
 | 17 | Al exportar un evento de una serie se exporta la serie entera (con sus excepciones). | Por diseño |
+| 18 | Cambiar la repetición de una serie descarta las excepciones y ocurrencias borradas que correspondían a la regla anterior (el resumen dice cuántas). Con "esta y las siguientes", la cantidad de veces de la regla nueva cuenta desde esa ocurrencia. | Por diseño |

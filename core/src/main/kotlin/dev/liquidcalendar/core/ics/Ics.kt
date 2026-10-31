@@ -61,6 +61,8 @@ class EventComponent internal constructor(
     internal val recurrenceId: Temporal?,
     /** Zona propia del archivo (TZID no IANA): sus horas locales se convierten con ella. */
     internal val localZone: FileZone? = null,
+    /** Cada RRULE tal como está en el archivo (sin "RRULE:"), para leerla sin reordenarla. */
+    internal val ruleTexts: List<String> = emptyList(),
 ) {
     /** VALARM de este componente (leídos del texto crudo, para que su clave coincida al editar). */
     var alarms: List<AlarmSpec> = emptyList()
@@ -216,6 +218,7 @@ object Ics {
             exdates = exdates,
             recurrenceId = recurrenceId,
             localZone = localZone,
+            ruleTexts = event.getProperties<RRule<Temporal>>(Property.RRULE).map { it.value },
         )
     } catch (e: Exception) {
         // Un VEVENT raro (fechas imposibles, RRULE inválida) se salta; el resto del archivo sigue.

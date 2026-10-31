@@ -2,6 +2,16 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## Sin publicar
+
+### Novedades
+- Al crear o editar un evento se puede elegir cómo se repite: cada día, semana (con los días que quieras), mes ("el día 15" o "el tercer martes") o año, cada cuántos, y hasta una fecha o una cantidad de veces. En una serie, cambiar la repetición se aplica a "esta y las siguientes" o a "todas"; el resumen avisa si se descartan cambios hechos a ocurrencias sueltas.
+- El detalle de un evento que se repite dice cómo ("Se repite · Cada semana: Lun, Mié").
+
+### Mejoras
+- Si un evento que se repite un día de la semana se mueve a otro día, la repetición pasa al día nuevo.
+- Las reglas de otras apps que el editor no sabe mostrar se conservan tal cual.
+
 ## 1.3.0
 
 ### Novedades

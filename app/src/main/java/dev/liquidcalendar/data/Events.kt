@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.ZoneId
 import java.util.UUID
+import dev.liquidcalendar.core.ics.Repeats
 
 private val SAFE_NAME = Regex("[A-Za-z0-9._-]{1,120}")
 
@@ -61,13 +62,21 @@ object Events {
             is When.AllDay -> DraftTime.AllDay(t.first, t.endExclusive.minusDays(1))
             is When.Timed -> DraftTime.Timed(t.start, t.end)
         }
-        Editable(EventDraft(occ.summary.orEmpty(), occ.location, occ.description, time, occ.alarms), occ.original ?: return@withContext null to EditBlock.NOT_FOUND) to null
+        // La repetición es la de la serie (la del evento principal).
+        val repeat = Repeats.of(resource, item.occurrence.uid, zone)
+        Editable(EventDraft(occ.summary.orEmpty(), occ.location, occ.description, time, occ.alarms, repeat), occ.original ?: return@withContext null to EditBlock.NOT_FOUND) to null
     }
 
     /** Cuántas ocurrencias toca cada alcance (null = sin fin). */
     suspend fun affected(calendar: CalendarInfo, uid: String, occurrence: Moment, scope: SeriesScope, zone: ZoneId): Int? = withContext(Dispatchers.Default) {
         val row = withContext(Dispatchers.IO) { Repo.event(calendar.id, uid) } ?: return@withContext 0
         Series.affected(Ics.parseResource(row.ics), uid, occurrence, scope, zone)
+    }
+
+    /** Cuántos cambios a ocurrencias sueltas se pierden si se cambia la repetición con ese alcance. */
+    suspend fun discardedByRuleChange(calendar: CalendarInfo, uid: String, occurrence: Moment, scope: SeriesScope, zone: ZoneId): Int = withContext(Dispatchers.Default) {
+        val row = withContext(Dispatchers.IO) { Repo.event(calendar.id, uid) } ?: return@withContext 0
+        Series.discardedByRuleChange(row.ics, uid, occurrence, scope, zone)
     }
 
     suspend fun create(calendar: CalendarInfo, draft: EventDraft, zone: ZoneId) = withContext(Dispatchers.IO) {

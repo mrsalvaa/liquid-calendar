@@ -81,6 +81,9 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.style.TextOverflow
 import dev.liquidcalendar.ui.glass.GlassSurface
 import dev.liquidcalendar.ui.glass.styled
+import dev.liquidcalendar.core.ics.RepeatEnd
+import dev.liquidcalendar.core.ics.Repeats
+import dev.liquidcalendar.core.ics.Repetition
 
 /** Qué se edita: un evento nuevo (en [day]) o uno existente con su borrador. */
 sealed interface EditTarget {
@@ -130,6 +133,7 @@ fun EventEditScreen(target: EditTarget, clock: DeviceClock, weekStart: DayOfWeek
     var endTime by remember { mutableStateOf(initial.endTime) }
     var chosen by remember { mutableStateOf(existing?.calendar) }
     var alarms by remember { mutableStateOf(before?.alarms.orEmpty()) }
+    var repeat by remember { mutableStateOf(before?.repeat ?: Repetition.None) }
     // Con recordatorios, se pide el permiso de notificaciones al guardar (si todavía no se dio).
     val requestNotifications = rememberNotificationPermission()
     val isSeries = existing?.occurrence != null
@@ -174,7 +178,12 @@ fun EventEditScreen(target: EditTarget, clock: DeviceClock, weekStart: DayOfWeek
             error = str(R.string.end_before_start)
             return null
         }
-        return EventDraft(title.trim(), location.trim().ifEmpty { null }, description.trim().ifEmpty { null }, time, alarms)
+        val until = ((repeat as? Repetition.Rule)?.rule?.end as? RepeatEnd.Until)?.date
+        if (until != null && until < startDate) {
+            error = str(R.string.repeat_until_before)
+            return null
+        }
+        return EventDraft(title.trim(), location.trim().ifEmpty { null }, description.trim().ifEmpty { null }, time, alarms, repeat)
     }
 
     Column(
@@ -235,8 +244,20 @@ fun EventEditScreen(target: EditTarget, clock: DeviceClock, weekStart: DayOfWeek
                 } else {
                     SettingRow(str(R.string.all_day)) { GlassSwitch(allDay, { allDay = it; timeTouched = true; error = null }) }
                 }
-                DateTimeRow(str(R.string.starts), startDate, if (allDay) null else startTime, { pickDate(startDate) { d -> val shift = endDate.toEpochDay() - startDate.toEpochDay(); startDate = d; endDate = d.plusDays(shift.coerceAtLeast(0)); timeTouched = true; error = null } }, { pickTime(startTime) { t -> startTime = t; timeTouched = true; error = null } })
+                DateTimeRow(str(R.string.starts), startDate, if (allDay) null else startTime, { pickDate(startDate) { d -> val shift = endDate.toEpochDay() - startDate.toEpochDay(); (repeat as? Repetition.Rule)?.let { repeat = Repetition.Rule(Repeats.follow(it.rule, startDate, d)) }; startDate = d; endDate = d.plusDays(shift.coerceAtLeast(0)); timeTouched = true; error = null } }, { pickTime(startTime) { t -> startTime = t; timeTouched = true; error = null } })
                 DateTimeRow(str(R.string.ends), endDate, if (allDay) null else endTime, { pickDate(endDate) { endDate = it; timeTouched = true; error = null } }, { pickTime(endTime) { t -> endTime = t; timeTouched = true; error = null } })
+                RepeatEditor(
+                    repeat,
+                    startDate,
+                    weekStart,
+                    onChange = { repeat = it; error = null },
+                    onPickUntil = { current ->
+                        pickDate(current) { d ->
+                            (repeat as? Repetition.Rule)?.let { repeat = Repetition.Rule(it.rule.copy(end = RepeatEnd.Until(d))) }
+                            error = null
+                        }
+                    },
+                )
                 RemindersEditor(alarms, allDay, zone) { alarms = it }
                 GlassTextField(location, { location = it }, str(R.string.location), keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences))
                 GlassTextField(description, { description = it }, str(R.string.description), singleLine = false, keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences))
@@ -258,7 +279,9 @@ fun EventEditScreen(target: EditTarget, clock: DeviceClock, weekStart: DayOfWeek
                     val occurrence = existing?.occurrence
                     if (existing != null && occurrence != null) {
                         // Serie: alcance y resumen antes de aplicar nada.
-                        askSeries(sheet, dialog, uiScope, existing.calendar, existing.uid, occurrence, zone, deleting = false, fields = changedFields(existing.before, d)) { scope ->
+                        // Cambiar la repetición no tiene sentido para una sola ocurrencia: "solo este" no se ofrece.
+                        val ruleChanged = existing.before.repeat != d.repeat
+                        askSeries(sheet, dialog, uiScope, existing.calendar, existing.uid, occurrence, zone, deleting = false, fields = changedFields(existing.before, d), ruleChanged = ruleChanged) { scope ->
                             CalendarApp.scope.launch { Events.updateSeries(existing.calendar, existing.uid, occurrence, scope, existing.before, d, zone) }
                             onSaved()
                         }

@@ -84,19 +84,75 @@ object Series {
         val doc = Doc(original)
         val master = doc.master(uid) ?: throw IcsException("No está la serie")
         if (scope == SeriesScope.FOLLOWING && isFirst(doc, master, occurrence, zone)) return edit(original, uid, occurrence, SeriesScope.ALL, before, after, zone, now, newUid)
+        // La repetición se cambia para todas o para las siguientes; "solo esta" nunca la toca.
+        val newRule = after.repeat.takeIf { it != before.repeat && it !is Repetition.Custom && scope != SeriesScope.THIS }
         return when (scope) {
             SeriesScope.THIS -> SeriesResult(editThis(doc, master, uid, occurrence, before, after, zone, now))
-            SeriesScope.ALL -> SeriesResult(editAll(doc, master, uid, before, after, zone, now))
+            SeriesScope.ALL -> {
+                editAll(doc, master, uid, before, after, zone, now)
+                if (newRule != null) {
+                    // Las excepciones y fechas sueltas eran de la regla vieja: se descartan.
+                    doc.overrides(uid).reversed().forEach { doc.remove(it) }
+                    val m = doc.master(uid)!!
+                    doc.replace(m, withRule(doc.lines(m), newRule, zone))
+                }
+                SeriesResult(doc.render())
+            }
             SeriesScope.FOLLOWING -> {
                 val id = newUid()
                 val delta = shiftOf(before, after)
-                val created = following(doc, master, uid, occurrence, delta, id, zone, now) { block ->
-                    // La serie nueva lleva lo que se cambió.
-                    applyDraft(block, before, after, zone, now, keepRule = true)
+                val created = following(doc, master, uid, occurrence, delta, id, zone, now, keepOverrides = newRule == null) { block ->
+                    // La serie nueva lleva lo que se cambió (y la regla nueva, si cambió).
+                    val edited = applyDraft(block, before, after, zone, now, keepRule = true)
+                    if (newRule != null) withRule(edited, newRule, zone) else edited
                 }
                 SeriesResult(truncate(doc, master, occurrence, zone, now).render(), id to created)
             }
         }
+    }
+
+    /**
+     * Cuántos cambios a ocurrencias sueltas (excepciones y ocurrencias borradas) se pierden si se
+     * cambia la repetición con ese alcance desde [occurrence].
+     */
+    fun discardedByRuleChange(original: String, uid: String, occurrence: Moment, scope: SeriesScope, zone: ZoneId): Int {
+        if (scope == SeriesScope.THIS) return 0
+        val doc = Doc(original)
+        val master = doc.master(uid) ?: return 0
+        val all = scope == SeriesScope.ALL || isFirst(doc, master, occurrence, zone)
+        val from = occurrence.key(zone)
+        fun counts(m: Moment?) = m != null && (all || m.key(zone) >= from)
+        return doc.overrides(uid).count { counts(doc.momentOf(it, "RECURRENCE-ID", zone)) } +
+            doc.datesOf(master, "EXDATE", zone).count { counts(it) }
+    }
+
+    /**
+     * El VEVENT con [repeat] como regla: fuera RRULE, RDATE, EXDATE y EXRULE; si hay regla nueva,
+     * va justo después del DTSTART, con el UNTIL escrito según el tipo de inicio.
+     */
+    private fun withRule(block: List<String>, repeat: Repetition, zone: ZoneId): List<String> {
+        var depth = 0
+        val out = mutableListOf<String>()
+        var startLine: String? = null
+        for ((i, line) in block.withIndex()) {
+            val u = Doc.unfold(line)
+            if (i > 0 && u.startsWith("BEGIN:", true)) depth++
+            if (depth == 0 && i > 0) {
+                val name = depth0Name(u)
+                if (name in setOf("RRULE", "RDATE", "EXDATE", "EXRULE")) continue
+                if (name == "DTSTART") startLine = u
+            }
+            if (u.startsWith("END:", true) && depth > 0) depth--
+            out += line
+        }
+        val rule = (repeat as? Repetition.Rule)?.rule ?: return out
+        val start = startLine ?: return out
+        val params = start.substringBefore(':').split(';').drop(1)
+        val allDay = params.any { it.equals("VALUE=DATE", true) } || start.substringAfter(':').length == 8
+        val floating = !allDay && params.none { it.startsWith("TZID=", true) } && !start.substringAfter(':').endsWith("Z")
+        val at = out.indexOfFirst { Doc.unfold(it).let { u -> depth0Name(u) == "DTSTART" } } + 1
+        out.add(at, IcsWriter.fold("RRULE:" + Repeats.format(rule, allDay, zone, floating)))
+        return out
     }
 
     fun delete(original: String, uid: String, occurrence: Moment, scope: SeriesScope, zone: ZoneId, now: Instant = Instant.now()): SeriesResult {
@@ -184,7 +240,18 @@ object Series {
         return doc
     }
 
-    private fun following(doc: Doc, master: Block, uid: String, occurrence: Moment, delta: Duration, newUid: String, zone: ZoneId, now: Instant, edit: (MutableList<String>) -> List<String>): String {
+    private fun following(
+        doc: Doc,
+        master: Block,
+        uid: String,
+        occurrence: Moment,
+        delta: Duration,
+        newUid: String,
+        zone: ZoneId,
+        now: Instant,
+        keepOverrides: Boolean = true,
+        edit: (MutableList<String>) -> List<String>,
+    ): String {
         val original = Doc(doc.render())
         val from = occurrence.key(zone)
         val m = original.master(uid)!!
@@ -214,7 +281,7 @@ object Series {
         }
         val newMaster = edit(renameUid(lines, newUid).toMutableList())
         val overrides = original.overrides(uid)
-            .filter { original.momentOf(it, "RECURRENCE-ID", zone)?.key(zone)?.let { k -> k >= from } == true }
+            .filter { keepOverrides && original.momentOf(it, "RECURRENCE-ID", zone)?.key(zone)?.let { k -> k >= from } == true }
             .map { o ->
                 val d = Doc.of(original.lines(o))
                 if (!delta.isZero) d.shiftDates(d.blocks().first(), setOf("RECURRENCE-ID"), delta, zone, original.fileZones)
@@ -266,7 +333,8 @@ object Series {
         val uid = block.first { depth0Name(it) == "UID" }.substringAfter(':')
         val wrapped = (listOf("BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:${IcsWriter.PRODID}") + block + "END:VCALENDAR").joinToString("\r\n") + "\r\n"
         // Para la excepción nueva, "antes" es lo que se copió del principal con el horario de la ocurrencia.
-        val patched = IcsWriter.patch(wrapped, uid, before, after, now, zone, ignoreRecurrenceId = true)
+        // La regla nunca se cambia acá (ver withRule): solo los textos, el horario y los recordatorios.
+        val patched = IcsWriter.patch(wrapped, uid, before, after.copy(repeat = before.repeat), now, zone, ignoreRecurrenceId = true)
         return Doc(patched).let { d -> d.lines(d.blocks().first()) }
     }
 

@@ -36,6 +36,7 @@ fun changedFields(before: EventDraft, after: EventDraft): String? = listOfNotNul
     R.string.field_location.takeIf { before.location != after.location },
     R.string.field_description.takeIf { before.description != after.description },
     R.string.field_alarms.takeIf { before.alarms != after.alarms },
+    R.string.field_repeat.takeIf { before.repeat != after.repeat },
 ).map(::str).takeIf { it.isNotEmpty() }?.joinToString(", ")
 
 /**
@@ -52,13 +53,17 @@ fun askSeries(
     zone: ZoneId,
     deleting: Boolean,
     fields: String?,
+    ruleChanged: Boolean = false,
     onConfirm: (SeriesScope) -> Unit,
 ) {
     fun summary(s: SeriesScope) = scope.launch {
         val count = Events.affected(calendar, uid, occurrence, s, zone)
+        // Cambiar la regla descarta los cambios hechos a ocurrencias sueltas (eran de la regla vieja).
+        val discarded = if (ruleChanged) Events.discardedByRuleChange(calendar, uid, occurrence, s, zone) else 0
         val lines = listOfNotNull(
             if (deleting) null else fields?.let { str(R.string.summary_fields, it) } ?: str(R.string.summary_no_changes),
             if (count == null) str(R.string.summary_endless) else plural(R.plurals.summary_affected, count),
+            plural(R.plurals.summary_discarded, discarded, discarded).takeIf { discarded > 0 },
             str(R.string.summary_split).takeIf { s == SeriesScope.FOLLOWING && !deleting },
             if (calendar.local) str(R.string.where_local) else str(R.string.where_synced, calendar.host.orEmpty()),
         )
@@ -86,8 +91,8 @@ fun askSeries(
     sheet(
         SheetSpec(
             title = str(if (deleting) R.string.series_delete_title else R.string.series_edit_title),
-            actions = listOf(
-                SheetAction(str(R.string.scope_this), Icons.Rounded.Event) { summary(SeriesScope.THIS) },
+            actions = listOfNotNull(
+                SheetAction(str(R.string.scope_this), Icons.Rounded.Event) { summary(SeriesScope.THIS) }.takeIf { !ruleChanged },
                 SheetAction(str(R.string.scope_following), Icons.Rounded.EventRepeat) { summary(SeriesScope.FOLLOWING) },
                 SheetAction(str(R.string.scope_all), Icons.Rounded.CalendarMonth) { summary(SeriesScope.ALL) },
             ),

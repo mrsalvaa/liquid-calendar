@@ -56,6 +56,7 @@ import dev.liquidcalendar.util.str
 import dev.liquidcalendar.util.timeOf
 import java.time.format.TextStyle
 import java.util.Locale
+import dev.liquidcalendar.core.ics.Repetition
 
 /** Detalle de una ocurrencia (solo lectura). */
 @Composable
@@ -115,7 +116,16 @@ fun EventDetailScreen(item: AgendaItem, clock: DeviceClock, padding: PaddingValu
                     )
                 }
             }
-            if (occ.recurring) Text(str(R.string.recurring), Modifier.padding(top = 6.dp), fontSize = 14.sp, color = p.accentFg)
+            if (occ.recurring) {
+                // La regla en palabras ("Cada semana: lun, mié"); si es de otra app, solo "Se repite".
+                val repeat = editable?.first?.draft?.repeat as? Repetition.Rule
+                val start = when (val t = occ.time) {
+                    is When.AllDay -> t.first
+                    is When.Timed -> t.start.atZone(clock.zone).toLocalDate()
+                }
+                val text = repeat?.let { "${str(R.string.recurring)} · ${describe(it, start)}" } ?: str(R.string.recurring)
+                Text(text, Modifier.padding(top = 6.dp), fontSize = 14.sp, color = p.accentFg)
+            }
         }
 
         if (occ.location != null) {

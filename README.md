@@ -39,8 +39,12 @@ The first day of the week is configurable; dates are shown as day/month/year.
 
 **Events**
 - Create, edit and delete events, with all-day or timed events in any time zone.
+- Repetitions when creating or editing: every day, week (on the days you choose), month ("on day
+  15" or "on the third Tuesday") or year, every so many, and until a date or a number of times.
+  Rules from other apps that don't fit those options are kept as they are.
 - Series: change or delete just this one, this and the following ones, or all of them, with a
-  summary of how many occurrences change before confirming.
+  summary of how many occurrences change before confirming. Changing the repetition applies to
+  this and the following ones, or to all of them.
 - Reminders as local notifications. By default the lock screen shows only "Event reminder", not the title.
 
 **Calendars**

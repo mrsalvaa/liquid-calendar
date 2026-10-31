@@ -8,7 +8,7 @@ import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-/** Lo que el usuario puede escribir de un evento (simple, no recurrente). */
+/** Lo que el usuario puede escribir de un evento. */
 data class EventDraft(
     val summary: String,
     val location: String?,
@@ -16,6 +16,8 @@ data class EventDraft(
     val time: DraftTime,
     /** Recordatorios: los que ya estaban llevan su clave y, si no se tocan, quedan igual. */
     val alarms: List<AlarmSpec> = emptyList(),
+    /** Repetición del evento principal (en una ocurrencia de serie, la de la serie). */
+    val repeat: Repetition = Repetition.None,
 )
 
 sealed interface DraftTime {
@@ -70,6 +72,9 @@ object IcsWriter {
         lines += "SUMMARY:${text(draft.summary)}"
         draft.location?.takeIf { it.isNotBlank() }?.let { lines += "LOCATION:${text(it)}" }
         draft.description?.takeIf { it.isNotBlank() }?.let { lines += "DESCRIPTION:${text(it)}" }
+        (draft.repeat as? Repetition.Rule)?.let {
+            lines += "RRULE:" + Repeats.format(it.rule, draft.time is DraftTime.AllDay, zone ?: ZoneOffset.UTC)
+        }
         draft.alarms.forEach { lines += Alarms.block(it, draft.summary) }
         lines += listOf("END:VEVENT", "END:VCALENDAR")
         return lines.joinToString("") { fold(it) + CRLF }
@@ -131,9 +136,12 @@ object IcsWriter {
         if (start < 0 || end < 0) throw IcsException("No está el evento a editar")
 
         val timeChanged = before.time != draft.time
+        // Una regla personalizada (de otro cliente) nunca se reescribe: solo se cambia por otra.
+        val ruleChanged = before.repeat != draft.repeat && draft.repeat !is Repetition.Custom
         // Dónde escribir el horario nuevo: se decide al ver el DTSTART original (más abajo).
         var target: WriteZone = WriteZone.Utc
         val replace = buildSet {
+            if (ruleChanged) add("RRULE")
             if (before.summary != draft.summary) add("SUMMARY")
             if (before.location != draft.location) add("LOCATION")
             if (before.description != draft.description) add("DESCRIPTION")
@@ -182,8 +190,13 @@ object IcsWriter {
             kept += l
         }
         target = writeZoneFor(startLine, fileZones, zone, draft.time)
+        // Con hora y sin zona (flotante): el UNTIL de la regla va en hora local, no en UTC.
+        val floating = draft.time is DraftTime.Timed && target is WriteZone.Floating
         val fresh = buildList {
             if (timeChanged) addAll(timeLines(draft.time, target))
+            if (ruleChanged) (draft.repeat as? Repetition.Rule)?.let {
+                add("RRULE:" + Repeats.format(it.rule, draft.time is DraftTime.AllDay, zone ?: ZoneOffset.UTC, floating))
+            }
             if ("SUMMARY" in replace) add("SUMMARY:${text(draft.summary)}")
             if ("LOCATION" in replace) draft.location?.takeIf { it.isNotBlank() }?.let { add("LOCATION:${text(it)}") }
             if ("DESCRIPTION" in replace) draft.description?.takeIf { it.isNotBlank() }?.let { add("DESCRIPTION:${text(it)}") }
@@ -223,7 +236,7 @@ object IcsWriter {
                 DraftTime.Timed(startInstant, startInstant.plus(length))
             }
         }
-        return EventDraft(c.info.summary.orEmpty(), c.info.location, c.info.description, time, c.alarms)
+        return EventDraft(c.info.summary.orEmpty(), c.info.location, c.info.description, time, c.alarms, Repeats.of(resource, uid, zone))
     }
 
     /** true si el recurso es una serie (RRULE/RDATE) o tiene excepciones: en esta versión no se edita. */
