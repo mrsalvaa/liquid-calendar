@@ -2,7 +2,7 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
-## Unreleased
+## 1.4.1
 
 ### Fixed
 - Typing the minutes in the time picker now keeps them, rounded to the nearest multiple of 5 (typing 32 sets 30).
