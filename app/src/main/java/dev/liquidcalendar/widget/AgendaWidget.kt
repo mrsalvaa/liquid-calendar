@@ -73,7 +73,7 @@ object AgendaWidgets {
         val today = LocalDate.now(zone)
         val items = Agenda.load(today.atStartOfDay(zone).toInstant(), today.plusDays(DAYS.toLong()).atStartOfDay(zone).toInstant(), zone)
             // Lo que ya terminó no se muestra.
-            .filter { val t = it.occurrence.time; t !is When.Timed || t.end > now || (t.end == t.start && t.start >= now) }
+            .filterNot { it.isOver(now) }
         // Lo que está en curso va primero, en "Ahora", y no se repite en su día.
         val ongoing = items.filter { it.isOngoing(now) }
         val groups = (items - ongoing.toSet()).groupBy { maxOf(it.days(zone).start, today) }.toSortedMap()

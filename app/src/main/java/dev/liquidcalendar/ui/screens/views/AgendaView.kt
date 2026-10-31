@@ -43,7 +43,7 @@ import java.time.LocalDate
 
 /**
  * Los eventos de [DAYS] días desde [from], agrupados por día. Si [from] es hoy, lo que está en
- * curso va primero, en "Ahora", y ya no se repite en su día.
+ * curso va primero, en "Ahora", y ya no se repite en su día; lo que ya terminó no aparece.
  */
 @Composable
 fun AgendaView(from: LocalDate, clock: DeviceClock, onEvent: (AgendaItem) -> Unit, contentPadding: PaddingValues, modifier: Modifier = Modifier) {
@@ -51,9 +51,11 @@ fun AgendaView(from: LocalDate, clock: DeviceClock, onEvent: (AgendaItem) -> Uni
     val data = rememberAgenda(from, from.plusDays(DAYS - 1L), clock.zone)
     val items = data?.items
     val now = rememberNow()
-    val ongoing = if (from == clock.today) items.orEmpty().filter { it.isOngoing(now) } else emptyList()
+    val isToday = from == clock.today
+    val ongoing = if (isToday) items.orEmpty().filter { it.isOngoing(now) } else emptyList()
+    // Desde hoy, lo que ya terminó no se muestra (como en el widget).
     val groups = data?.byStart.orEmpty()
-        .map { (day, list) -> day to list.filter { it !in ongoing } }
+        .map { (day, list) -> day to list.filter { it !in ongoing && !(isToday && it.isOver(now)) } }
         .filter { it.second.isNotEmpty() }
     LazyColumn(modifier.fillMaxSize(), contentPadding = contentPadding) {
         if (items != null && groups.isEmpty() && ongoing.isEmpty()) {

@@ -27,6 +27,12 @@ data class AgendaItem(val occurrence: Occurrence, val calendar: CalendarInfo) {
         }
     }
 
+    /** Ya terminó en [now] (solo los que tienen hora; uno sin duración, cuando ya pasó su hora). */
+    fun isOver(now: java.time.Instant): Boolean {
+        val t = occurrence.time
+        return t is When.Timed && if (t.end == t.start) t.start < now else t.end <= now
+    }
+
     /** En curso en [now]: ya empezó y todavía no terminó (solo los que tienen hora). */
     fun isOngoing(now: java.time.Instant): Boolean {
         val t = occurrence.time
