@@ -17,11 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,44 +35,51 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.liquidcalendar.R
 import dev.liquidcalendar.data.AgendaItem
-import dev.liquidcalendar.ui.glass.GlassButton
 import dev.liquidcalendar.ui.glass.GlassSurface
 import dev.liquidcalendar.ui.glass.LocalGlass
 import dev.liquidcalendar.ui.screens.EmptyState
 import dev.liquidcalendar.util.str
 import java.time.LocalDate
 
-/** Próximos eventos agrupados por día, desde [from], de a [CHUNK] días. */
+/**
+ * Los eventos de [DAYS] días desde [from], agrupados por día. Si [from] es hoy, lo que está en
+ * curso va primero, en "Ahora", y ya no se repite en su día.
+ */
 @Composable
 fun AgendaView(from: LocalDate, clock: DeviceClock, onEvent: (AgendaItem) -> Unit, contentPadding: PaddingValues, modifier: Modifier = Modifier) {
     val p = LocalGlass.current
-    var chunks by rememberSaveable(from) { mutableIntStateOf(1) }
-    val last = from.plusDays(CHUNK * chunks - 1L)
-    val data = rememberAgenda(from, last, clock.zone)
+    val data = rememberAgenda(from, from.plusDays(DAYS - 1L), clock.zone)
     val items = data?.items
+    val now = rememberNow()
+    val ongoing = if (from == clock.today) items.orEmpty().filter { it.isOngoing(now) } else emptyList()
     val groups = data?.byStart.orEmpty()
+        .map { (day, list) -> day to list.filter { it !in ongoing } }
+        .filter { it.second.isNotEmpty() }
     LazyColumn(modifier.fillMaxSize(), contentPadding = contentPadding) {
-        if (items != null && groups.isEmpty()) {
+        if (items != null && groups.isEmpty() && ongoing.isEmpty()) {
             item { EmptyState(str(R.string.no_events_day), str(R.string.agenda_empty)) }
         }
+        if (ongoing.isNotEmpty()) {
+            item(key = "now") { DayHeading(str(R.string.now), accent = true) }
+            items(ongoing, key = { "n${it.occurrence.key}${it.calendar.id}" }) { item -> AgendaRow(item, clock.today, clock, onEvent) }
+        }
         groups.forEach { (day, list) ->
-            item(key = "d$day") {
-                Text(
-                    dayHeading(day, clock.today),
-                    Modifier.padding(start = 8.dp, top = 16.dp, bottom = 6.dp).semantics { heading() },
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (day == clock.today) p.accentFg else p.contentSecondary,
-                )
-            }
+            item(key = "d$day") { DayHeading(dayHeading(day, clock.today), accent = day == clock.today) }
             items(list, key = { "e$day${it.occurrence.key}${it.calendar.id}" }) { item -> AgendaRow(item, day, clock, onEvent) }
         }
-        if (items != null) {
-            item {
-                GlassButton(str(R.string.show_more), { chunks++ }, Modifier.fillMaxWidth().padding(top = 16.dp))
-            }
-        }
     }
+}
+
+@Composable
+private fun DayHeading(text: String, accent: Boolean) {
+    val p = LocalGlass.current
+    Text(
+        text,
+        Modifier.padding(start = 8.dp, top = 16.dp, bottom = 6.dp).semantics { heading() },
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = if (accent) p.accentFg else p.contentSecondary,
+    )
 }
 
 @Composable
@@ -109,4 +112,5 @@ private fun AgendaRow(item: AgendaItem, day: LocalDate, clock: DeviceClock, onEv
     }
 }
 
-private const val CHUNK = 60
+/** Días que muestra la agenda, contando el primero (como el widget). */
+private const val DAYS = 14

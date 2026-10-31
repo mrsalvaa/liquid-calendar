@@ -2,6 +2,15 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
+## Unreleased
+
+### New
+- Agenda and widget: events happening right now show up at the top, under "Now", followed by the rest (today, tomorrow…). The widget updates itself when an event starts or ends.
+
+### Changed
+- The agenda shows two weeks from the chosen date, without "Show more".
+- When creating an event, the calendar picker shows the colour, the name and a phone or cloud icon instead of the "Synced with…" text.
+
 ## 1.2.0
 
 ### New

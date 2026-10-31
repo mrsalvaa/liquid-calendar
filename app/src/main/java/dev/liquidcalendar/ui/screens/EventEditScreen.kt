@@ -68,6 +68,19 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZonedDateTime
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.material3.Icon
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.text.style.TextOverflow
+import dev.liquidcalendar.ui.glass.GlassSurface
+import dev.liquidcalendar.ui.glass.styled
 
 /** Qué se edita: un evento nuevo (en [day]) o uno existente con su borrador. */
 sealed interface EditTarget {
@@ -197,10 +210,10 @@ fun EventEditScreen(target: EditTarget, clock: DeviceClock, weekStart: DayOfWeek
                                 DialogSpec(str(R.string.choose_calendar)) { dismiss ->
                                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         writable.orEmpty().forEach { c ->
-                                            GlassChip("${c.name} · ${originText(c)}", c.id == calendar.id, {
+                                            CalendarChoice(c, c.id == calendar.id) {
                                                 chosen = c
                                                 dismiss()
-                                            }, Modifier.fillMaxWidth())
+                                            }
                                         }
                                     }
                                 },
@@ -274,6 +287,49 @@ private fun DateTimeRow(label: String, date: LocalDate, time: LocalTime?, onDate
         Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GlassChip(longDate(date), false, onDate)
             if (time != null) GlassChip(timeOf(time), false, onTime)
+        }
+    }
+}
+
+/** Opción del selector de calendario: color, nombre y, tras un punto, celular o nube. */
+@Composable
+private fun CalendarChoice(c: CalendarInfo, selected: Boolean, onClick: () -> Unit) {
+    val p = LocalGlass.current
+    val content = if (selected) p.onAccent else p.content
+    GlassSurface(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .semantics(mergeDescendants = true) {
+                this.selected = selected
+                role = Role.RadioButton
+                contentDescription = "${c.name}, ${originText(c)}"
+            },
+        shape = CircleShape,
+        tint = if (selected) (if (p.solid) p.accent else p.accent.copy(alpha = if (p.dark) 0.5f else 0.92f)) else null,
+        frost = 4.dp,
+        shadowRadius = 6.dp,
+        onClick = onClick,
+    ) {
+        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(12.dp).clip(CircleShape).background(Color(c.color)))
+            Spacer(Modifier.width(10.dp))
+            Text(
+                c.name,
+                Modifier.weight(1f, fill = false),
+                color = content,
+                fontSize = 15.sp,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(" · ", color = content.copy(alpha = 0.6f), fontSize = 15.sp)
+            Icon(
+                styled(if (c.local) Icons.Rounded.PhoneAndroid else Icons.Rounded.Cloud),
+                null,
+                Modifier.size(16.dp),
+                tint = content.copy(alpha = 0.75f),
+            )
         }
     }
 }

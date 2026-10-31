@@ -12,6 +12,7 @@
     <string name="back">Volver</string>
     <string name="cancel">Cancelar</string>
     <string name="settings">Ajustes</string>
+    <string name="now">Ahora</string>
     <string name="today">Hoy</string>
 
 
@@ -152,7 +153,6 @@
     </plurals>
     <string name="no_events_day">Sin eventos</string>
     <string name="agenda_empty">No hay eventos en los próximos días.</string>
-    <string name="show_more">Mostrar más</string>
     <string name="untitled_event">(Sin título)</string>
     <string name="recurring">Se repite</string>
     <string name="local_badge">En este dispositivo</string>

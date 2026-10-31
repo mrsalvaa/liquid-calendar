@@ -77,6 +77,19 @@ fun rememberDeviceClock(): DeviceClock {
     return clock
 }
 
+/** La hora actual, al minuto: se renueva cuando cambia el minuto (para lo que está "en curso"). */
+@Composable
+fun rememberNow(): java.time.Instant {
+    var now by remember { mutableStateOf(java.time.Instant.now()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(60_000 - System.currentTimeMillis() % 60_000)
+            now = java.time.Instant.now()
+        }
+    }
+    return now
+}
+
 private fun now(): DeviceClock = ZoneId.systemDefault().let { DeviceClock(it, LocalDate.now(it)) }
 
 /**

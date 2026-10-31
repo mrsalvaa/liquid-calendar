@@ -2,6 +2,15 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## Sin publicar
+
+### Novedades
+- Agenda y widget: los eventos que están pasando ahora aparecen arriba, en "Ahora", y debajo sigue el resto (hoy, mañana…). El widget se actualiza solo cuando un evento empieza o termina.
+
+### Cambios
+- La agenda muestra dos semanas desde la fecha elegida, sin "Mostrar más".
+- Al crear un evento, el selector de calendario muestra el color, el nombre y un ícono de celular o de nube, en vez del texto "Sincronizado con…".
+
 ## 1.2.0
 
 ### Novedades

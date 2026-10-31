@@ -1,5 +1,6 @@
 package dev.liquidcalendar.widget
 
+import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -42,11 +43,19 @@ class AgendaWidget : AppWidgetProvider() {
             }
         }
     }
+
+    override fun onDisabled(context: Context) {
+        // Ya no queda ningún widget: no hace falta seguir actualizando.
+        context.getSystemService(AlarmManager::class.java).cancel(AgendaWidgets.updateIntent(context))
+    }
 }
 
 object AgendaWidgets {
     /** Días que muestra el widget, contando hoy. */
     const val DAYS = 14
+
+    /** Id de la fila "Ahora" (los días usan ids negativos a partir de -1). */
+    private const val NOW_ROW = Long.MIN_VALUE
 
     /** Tope de filas (encabezados de día incluidos), para no armar listas enormes. */
     private const val MAX_ROWS = 200
@@ -65,7 +74,9 @@ object AgendaWidgets {
         val items = Agenda.load(today.atStartOfDay(zone).toInstant(), today.plusDays(DAYS.toLong()).atStartOfDay(zone).toInstant(), zone)
             // Lo que ya terminó no se muestra.
             .filter { val t = it.occurrence.time; t !is When.Timed || t.end > now || (t.end == t.start && t.start >= now) }
-        val groups = items.groupBy { maxOf(it.days(zone).start, today) }.toSortedMap()
+        // Lo que está en curso va primero, en "Ahora", y no se repite en su día.
+        val ongoing = items.filter { it.isOngoing(now) }
+        val groups = (items - ongoing.toSet()).groupBy { maxOf(it.days(zone).start, today) }.toSortedMap()
 
         val settings = Stores.settings.value
         val light = glassPalette(settings.glassStyle, dark = false)
@@ -79,6 +90,15 @@ object AgendaWidgets {
 
         val list = RemoteViews.RemoteCollectionItems.Builder().setHasStableIds(true).setViewTypeCount(2)
         var rows = 0
+        if (ongoing.isNotEmpty()) {
+            list.addItem(NOW_ROW, labelRow(context, str(R.string.now), accent = true, colors))
+            rows++
+            for (item in ongoing) {
+                if (rows >= MAX_ROWS) break
+                list.addItem(itemId(item), eventRow(context, item, today, zone, colors))
+                rows++
+            }
+        }
         for ((day, dayItems) in groups) {
             if (rows >= MAX_ROWS) break
             list.addItem(-day.toEpochDay() - 1, dayRow(context, day, today, colors))
@@ -108,17 +128,51 @@ object AgendaWidgets {
         views.setOnClickPendingIntent(R.id.widget_add, activity(context, 2, MainActivity.ACTION_NEW_EVENT, mutable = false))
         views.setPendingIntentTemplate(R.id.widget_list, activity(context, 3, MainActivity.ACTION_OPEN_EVENT, mutable = true))
         manager.updateAppWidget(ids, views)
+        scheduleNext(context, items, now, today, zone)
     }
 
-    private fun dayRow(context: Context, day: LocalDate, today: LocalDate, colors: Colors): RemoteViews =
+    /**
+     * Vuelve a dibujar cuando empieza o termina el próximo evento con hora (para entrar o salir
+     * de "Ahora") o a medianoche, lo que llegue antes. La alarma no despierta al celu: si está
+     * dormido, se actualiza al encenderse, y no hace falta ningún permiso.
+     */
+    private fun scheduleNext(context: Context, items: List<AgendaItem>, now: Instant, today: LocalDate, zone: ZoneId) {
+        val midnight = today.plusDays(1).atStartOfDay(zone).toInstant()
+        val next = items.asSequence()
+            .mapNotNull { it.occurrence.time as? When.Timed }
+            .flatMap { sequenceOf(it.start, it.end) }
+            .filter { it > now }
+            .plus(midnight)
+            .min()
+        context.getSystemService(AlarmManager::class.java).set(AlarmManager.RTC, next.toEpochMilli(), updateIntent(context))
+    }
+
+    /** Pide al propio widget que se actualice (explícito: solo lo recibe esta app). */
+    fun updateIntent(context: Context): PendingIntent {
+        val ids = AppWidgetManager.getInstance(context).getAppWidgetIds(ComponentName(context, AgendaWidget::class.java))
+        return PendingIntent.getBroadcast(
+            context,
+            0,
+            Intent(context, AgendaWidget::class.java)
+                .setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    private fun dayRow(context: Context, day: LocalDate, today: LocalDate, colors: Colors): RemoteViews {
+        val label = when (day) {
+            today -> str(R.string.today)
+            today.plusDays(1) -> str(R.string.widget_tomorrow)
+            else -> "${dayName(day.dayOfWeek)} ${shortDate(day)}"
+        }
+        return labelRow(context, label, accent = day == today, colors)
+    }
+
+    private fun labelRow(context: Context, label: String, accent: Boolean, colors: Colors): RemoteViews =
         RemoteViews(context.packageName, R.layout.widget_agenda_day).apply {
-            val label = when (day) {
-                today -> str(R.string.today)
-                today.plusDays(1) -> str(R.string.widget_tomorrow)
-                else -> "${dayName(day.dayOfWeek)} ${shortDate(day)}"
-            }
             setTextViewText(R.id.widget_day, label)
-            colors.text(this, R.id.widget_day) { if (day == today) it.accentFg else it.contentSecondary }
+            colors.text(this, R.id.widget_day) { if (accent) it.accentFg else it.contentSecondary }
         }
 
     private fun eventRow(context: Context, item: AgendaItem, day: LocalDate, zone: ZoneId, colors: Colors): RemoteViews =

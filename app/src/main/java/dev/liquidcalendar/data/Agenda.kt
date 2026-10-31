@@ -26,6 +26,12 @@ data class AgendaItem(val occurrence: Occurrence, val calendar: CalendarInfo) {
             first..maxOf(first, last)
         }
     }
+
+    /** En curso en [now]: ya empezó y todavía no terminó (solo los que tienen hora). */
+    fun isOngoing(now: java.time.Instant): Boolean {
+        val t = occurrence.time
+        return t is When.Timed && t.start <= now && now < t.end
+    }
 }
 
 /**
