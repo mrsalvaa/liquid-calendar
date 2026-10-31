@@ -6,6 +6,7 @@
 
 ### Arreglos
 - Escribir los minutos en el selector de hora ahora los guarda, redondeados al múltiplo de 5 más cercano (escribir 32 pone 30).
+- Cambiar la hora de inicio corre también el fin, conservando la duración del evento.
 
 ## 1.4.0
 

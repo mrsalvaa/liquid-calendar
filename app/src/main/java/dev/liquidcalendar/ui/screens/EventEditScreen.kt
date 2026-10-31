@@ -65,7 +65,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZonedDateTime
 import androidx.compose.foundation.layout.heightIn
@@ -152,6 +154,17 @@ fun EventEditScreen(target: EditTarget, clock: DeviceClock, weekStart: DayOfWeek
         },
     )
 
+    // Cambiar la hora de inicio corre el fin para conservar la duración (si el fin estaba antes
+    // del inicio no hay duración que conservar y el fin queda como está).
+    fun moveStartTime(t: LocalTime) {
+        val duration = Duration.between(LocalDateTime.of(startDate, startTime), LocalDateTime.of(endDate, endTime))
+        startTime = t
+        if (!duration.isNegative) {
+            val end = LocalDateTime.of(startDate, t).plus(duration)
+            endDate = end.toLocalDate()
+            endTime = end.toLocalTime()
+        }
+    }
     fun pickTime(current: LocalTime, set: (LocalTime) -> Unit) = dialog(
         DialogSpec(str(R.string.choose_time)) { dismiss ->
             TimePickerContent(current) {
@@ -244,7 +257,7 @@ fun EventEditScreen(target: EditTarget, clock: DeviceClock, weekStart: DayOfWeek
                 } else {
                     SettingRow(str(R.string.all_day)) { GlassSwitch(allDay, { allDay = it; timeTouched = true; error = null }) }
                 }
-                DateTimeRow(str(R.string.starts), startDate, if (allDay) null else startTime, { pickDate(startDate) { d -> val shift = endDate.toEpochDay() - startDate.toEpochDay(); (repeat as? Repetition.Rule)?.let { repeat = Repetition.Rule(Repeats.follow(it.rule, startDate, d)) }; startDate = d; endDate = d.plusDays(shift.coerceAtLeast(0)); timeTouched = true; error = null } }, { pickTime(startTime) { t -> startTime = t; timeTouched = true; error = null } })
+                DateTimeRow(str(R.string.starts), startDate, if (allDay) null else startTime, { pickDate(startDate) { d -> val shift = endDate.toEpochDay() - startDate.toEpochDay(); (repeat as? Repetition.Rule)?.let { repeat = Repetition.Rule(Repeats.follow(it.rule, startDate, d)) }; startDate = d; endDate = d.plusDays(shift.coerceAtLeast(0)); timeTouched = true; error = null } }, { pickTime(startTime) { t -> moveStartTime(t); timeTouched = true; error = null } })
                 DateTimeRow(str(R.string.ends), endDate, if (allDay) null else endTime, { pickDate(endDate) { endDate = it; timeTouched = true; error = null } }, { pickTime(endTime) { t -> endTime = t; timeTouched = true; error = null } })
                 RepeatEditor(
                     repeat,
