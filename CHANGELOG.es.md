@@ -2,7 +2,7 @@
 
 [English](CHANGELOG.md) | **Español**
 
-## Sin publicar
+## 1.3.0
 
 ### Novedades
 - Agenda y widget: los eventos que están pasando ahora aparecen arriba, en "Ahora", y debajo sigue el resto (hoy, mañana…). El widget se actualiza solo cuando un evento empieza o termina.

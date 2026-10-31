@@ -2,7 +2,7 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
-## Unreleased
+## 1.3.0
 
 ### New
 - Agenda and widget: events happening right now show up at the top, under "Now", followed by the rest (today, tomorrow…). The widget updates itself when an event starts or ends.
