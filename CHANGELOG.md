@@ -2,7 +2,7 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
-## Unreleased
+## 1.4.0
 
 ### New
 - When creating or editing an event you can choose how it repeats: every day, week (on the days you want), month ("on day 15" or "on the third Tuesday") or year, every so many, and until a date or a number of times. In a series, changing the repetition applies to "this and the following ones" or to "all"; the summary warns if changes made to single occurrences are discarded.

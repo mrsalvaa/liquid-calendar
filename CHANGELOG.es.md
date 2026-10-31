@@ -2,7 +2,7 @@
 
 [English](CHANGELOG.md) | **Español**
 
-## Sin publicar
+## 1.4.0
 
 ### Novedades
 - Al crear o editar un evento se puede elegir cómo se repite: cada día, semana (con los días que quieras), mes ("el día 15" o "el tercer martes") o año, cada cuántos, y hasta una fecha o una cantidad de veces. En una serie, cambiar la repetición se aplica a "esta y las siguientes" o a "todas"; el resumen avisa si se descartan cambios hechos a ocurrencias sueltas.
