@@ -2,6 +2,11 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
+## 1.4.2
+
+### Fixed
+- On the plain background in light theme, the tab bar now shows the liquid glass effect, as it does in dark theme.
+
 ## 1.4.1
 
 ### Fixed

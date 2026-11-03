@@ -2,6 +2,11 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## 1.4.2
+
+### Arreglos
+- Con fondo liso en tema claro, la barra de pestañas ahora deja ver el efecto de cristal líquido, igual que en oscuro.
+
 ## 1.4.1
 
 ### Arreglos

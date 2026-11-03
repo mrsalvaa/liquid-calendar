@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package dev.liquidcalendar.ui.glass
 
 import androidx.activity.compose.BackHandler
@@ -330,6 +331,7 @@ fun GlassNavBar(
         modifier.fillMaxWidth().height(70.dp),
         shape = CircleShape,
         strong = true,
+        tint = p.pillVeil(),
         frost = 4.dp,
     ) {
         BoxWithConstraints(

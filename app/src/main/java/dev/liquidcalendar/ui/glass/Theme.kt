@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package dev.liquidcalendar.ui.glass
 
 import android.os.SystemClock
@@ -241,6 +242,13 @@ val SolidLight = LightGlass.copy(
     levels = listOf(Color.White, Color(0xFFF1F1F5), Color(0xFFE6E6EB)),
     outline = Color.Black.copy(alpha = 0.06f),
 )
+
+/**
+ * Velo de las píldoras flotantes (la de pestañas y las de selección). Con fondo liso en claro la
+ * paleta lleva 85 % de blanco y tapa la refracción, que en oscuro sí se ve (9 %): ahí, y solo ahí,
+ * llevan menos para que se note lo que pasa por debajo. null = el velo normal de la paleta.
+ */
+fun GlassPalette.pillVeil(): Color? = if (!dark && !solid && blobs.isEmpty()) Color.White.copy(alpha = 0.3f) else null
 
 val LocalGlass = staticCompositionLocalOf { DarkGlass }
 

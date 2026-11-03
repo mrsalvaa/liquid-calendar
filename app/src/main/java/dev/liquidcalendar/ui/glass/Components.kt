@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
 package dev.liquidcalendar.ui.glass
 
 import androidx.compose.animation.animateColorAsState
