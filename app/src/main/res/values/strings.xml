@@ -86,7 +86,8 @@
     <string name="last_sync">Last sync: %s</string>
     <string name="never_synced">Not synced yet</string>
     <string name="syncing">Syncing…</string>
-    <string name="sync_done">Synced</string>
+    <string name="sync_done">Sync finished</string>
+    <string name="dismiss">Dismiss</string>
     <string name="account_on_server">%1$s on %2$s</string>
     <string name="needs_password_title">Enter your password again</string>
     <string name="needs_password_text">The server rejected the password. Nothing will sync until you enter it again (some servers block your IP after a few failed attempts).</string>
@@ -218,7 +219,7 @@
     <string name="sync_manual">Manual only</string>
     <string name="sync_every_min">Every %d min</string>
     <string name="sync_every_h">Every %d h</string>
-    <string name="sync_interval_hint">Only with a connection. Nothing is retried after a rejected password.</string>
+    <string name="sync_interval_hint">Only with a connection. Android may delay it while the phone is idle. Nothing is retried after a rejected password.</string>
 
     <!-- Series -->
     <string name="scope_this">Only this one</string>

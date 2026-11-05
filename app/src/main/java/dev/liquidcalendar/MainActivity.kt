@@ -111,6 +111,8 @@ import dev.liquidcalendar.ui.screens.LocalToast
 import dev.liquidcalendar.ui.screens.SettingsScreen
 import dev.liquidcalendar.ui.screens.TAB_COUNT
 import dev.liquidcalendar.ui.screens.TAB_MONTH
+import dev.liquidcalendar.ui.screens.ManualSync
+import dev.liquidcalendar.ui.screens.NoticeHost
 import dev.liquidcalendar.ui.screens.ToastHost
 import dev.liquidcalendar.util.preferHighestRefreshRate
 import dev.liquidcalendar.util.str
@@ -198,6 +200,7 @@ private fun App(animated: Boolean, weekStart: DayOfWeek, flatNav: Boolean) {
     var prompt by remember { mutableStateOf<PromptSpec?>(null) }
     var dialog by remember { mutableStateOf<DialogSpec?>(null) }
     var toast by remember { mutableStateOf<Pair<String, Long>?>(null) }
+    val notice by ManualSync.notice.collectAsStateWithLifecycle()
     val reduced = LocalReducedMotion.current
 
     fun push(o: Overlay) {
@@ -311,6 +314,7 @@ private fun App(animated: Boolean, weekStart: DayOfWeek, flatNav: Boolean) {
                     GlassIconButton(Icons.Rounded.Add, str(R.string.new_event), { push(Overlay.Edit(EditTarget.New(selected))) }, size = 58.dp, prominent = true)
                 }
                 ToastHost(toast) { toast = null }
+                NoticeHost(notice, ManualSync::dismissNotice)
                 ActionSheetHost(sheet) { sheet = null }
                 PromptHost(prompt) { prompt = null }
                 DialogHost(dialog) { dialog = null }

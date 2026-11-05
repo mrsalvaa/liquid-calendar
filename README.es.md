@@ -65,7 +65,7 @@ sincronización.
 - Funciona sin conexión: los cambios esperan en una cola y se suben después. Cada subida es
   condicional (ETag), así que nunca pisa una versión más nueva; ante un conflicto ves las dos y
   elegís.
-- Sincronización en segundo plano con WorkManager, configurable o solo a mano.
+- Sincronización en segundo plano con WorkManager: cada 5, 15 o 30 minutos, o cada 1 hora.
 
 **Suscripciones y archivos**
 - Suscripciones webcal/ICS de solo lectura que quedan en el dispositivo, actualizadas cada 1 h,

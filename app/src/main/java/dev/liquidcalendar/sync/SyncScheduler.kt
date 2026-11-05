@@ -3,6 +3,7 @@ package dev.liquidcalendar.sync
 import android.annotation.SuppressLint
 import android.content.Context
 import dev.liquidcalendar.CalendarApp
+import dev.liquidcalendar.core.sync.SyncInterval
 import dev.liquidcalendar.data.Repo
 import dev.liquidcalendar.data.Stores
 import kotlinx.coroutines.Dispatchers
@@ -28,11 +29,8 @@ import java.util.concurrent.TimeUnit
  */
 @SuppressLint("StaticFieldLeak") // Solo guarda el contexto de la aplicación, que vive lo mismo que el proceso.
 object SyncScheduler {
-    /** Opciones del ajuste, en minutos. 0 = solo a mano. El mínimo es 30. */
-    val INTERVALS = listOf(30, 60, 180, 360, 720, 0)
-    const val DEFAULT_INTERVAL = 60
-
     private const val PERIODIC = "sync-periodic"
+    private const val CHAIN = "sync-chain"
     private const val SOON = "sync-soon"
     private const val RETRY = "sync-retry"
 
@@ -44,20 +42,41 @@ object SyncScheduler {
 
     private val network = Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
 
-    /** (Re)programa la sincronización periódica; 0 la apaga. Sin cuenta CalDAV no programa nada. */
+    /**
+     * (Re)programa la sincronización periódica. Sin cuenta CalDAV ni suscripciones no programa nada;
+     * con solo suscripciones basta un turno por hora. Android no programa trabajos periódicos de
+     * menos de 15 minutos: para 5, queda uno de 15 de respaldo y cada turno programa el siguiente.
+     */
     fun schedulePeriodic(minutes: Int, hasAccount: Boolean, hasSubscriptions: Boolean = false) {
         val wm = WorkManager.getInstance(app)
-        // Con suscripciones hace falta un turno aunque la cuenta CalDAV esté "solo a mano".
-        @Suppress("NAME_SHADOWING")
-        val minutes = if ((minutes <= 0 || !hasAccount) && hasSubscriptions) 60 else minutes
-        if (minutes <= 0 || (!hasAccount && !hasSubscriptions)) {
+        if (!hasAccount && !hasSubscriptions) {
             wm.cancelUniqueWork(PERIODIC)
+            wm.cancelUniqueWork(CHAIN)
             return
         }
-        val request = PeriodicWorkRequestBuilder<SyncWorker>(minutes.coerceAtLeast(30).toLong(), TimeUnit.MINUTES)
+        val interval = if (hasAccount) SyncInterval.normalize(minutes) else SyncInterval.DEFAULT
+        val request = PeriodicWorkRequestBuilder<SyncWorker>(SyncInterval.periodicMinutes(interval).toLong(), TimeUnit.MINUTES)
             .setConstraints(network)
             .build()
         wm.enqueueUniquePeriodicWork(PERIODIC, ExistingPeriodicWorkPolicy.UPDATE, request)
+        if (SyncInterval.needsChain(interval)) enqueueChain(interval, ExistingWorkPolicy.KEEP) else wm.cancelUniqueWork(CHAIN)
+    }
+
+    private fun enqueueChain(minutes: Int, policy: ExistingWorkPolicy) {
+        val request = OneTimeWorkRequestBuilder<SyncWorker>()
+            .setInitialDelay(minutes.toLong(), TimeUnit.MINUTES)
+            .setConstraints(network)
+            .build()
+        WorkManager.getInstance(app).enqueueUniqueWork(CHAIN, policy, request)
+    }
+
+    /**
+     * El turno siguiente, contado desde el que acaba de terminar. Tiene que ser lo último que haga
+     * el trabajo: si es el mismo de la cadena, reemplazarlo también lo da por terminado.
+     */
+    fun continueChain() {
+        val minutes = Stores.settings.value.syncIntervalMinutes
+        if (SyncInterval.needsChain(minutes)) enqueueChain(SyncInterval.normalize(minutes), ExistingWorkPolicy.REPLACE)
     }
 
     /** Reprograma según lo que haya: cuenta CalDAV, suscripciones y el intervalo de los ajustes. */
@@ -90,6 +109,7 @@ object SyncScheduler {
     fun cancelAll() {
         WorkManager.getInstance(app).apply {
             cancelUniqueWork(PERIODIC)
+            cancelUniqueWork(CHAIN)
             cancelUniqueWork(SOON)
             cancelUniqueWork(RETRY)
         }
@@ -99,12 +119,13 @@ object SyncScheduler {
 /** Un intento de sincronización. Nunca pide reintentos a WorkManager: los decide SyncEngine. */
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        when (val r = SyncEngine.sync()) {
-            is SyncResult.Wait -> SyncScheduler.retryAt(r.until)
-            else -> Unit // Ok, sin cuenta, requiere contraseña o error permanente: esperar al próximo turno.
-        }
+        val result = SyncEngine.sync()
+        if (result is SyncResult.Wait) SyncScheduler.retryAt(result.until)
         // Las suscripciones van por su cuenta: no dependen de la cuenta CalDAV ni la frenan.
         Subscriptions.refreshDue()
+        // Sin cuenta o sin contraseña no hay nada que hacer hasta guardarlas, y eso reprograma; una
+        // espera sigue desde su propio reintento.
+        if (result is SyncResult.Ok || result is SyncResult.Failed) SyncScheduler.continueChain()
         return Result.success()
     }
 }

@@ -87,7 +87,8 @@
     <string name="last_sync">Última sincronización: %s</string>
     <string name="never_synced">Todavía no se sincronizó</string>
     <string name="syncing">Sincronizando…</string>
-    <string name="sync_done">Sincronizado</string>
+    <string name="sync_done">Sincronización terminada</string>
+    <string name="dismiss">Descartar</string>
     <string name="account_on_server">%1$s en %2$s</string>
     <string name="needs_password_title">Volvé a ingresar la contraseña</string>
     <string name="needs_password_text">El servidor rechazó la contraseña. No se sincroniza nada hasta que la ingreses de nuevo (algunos servidores bloquean la IP tras unos pocos intentos fallidos).</string>
@@ -224,7 +225,7 @@
     <string name="sync_manual">Solo a mano</string>
     <string name="sync_every_min">Cada %d min</string>
     <string name="sync_every_h">Cada %d h</string>
-    <string name="sync_interval_hint">Solo con conexión. Después de una contraseña rechazada no se reintenta nada.</string>
+    <string name="sync_interval_hint">Solo con conexión. Android puede demorarla mientras el celular está en reposo. Después de una contraseña rechazada no se reintenta nada.</string>
 
     <!-- Series -->
     <string name="scope_this">Solo esta</string>

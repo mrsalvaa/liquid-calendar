@@ -2,6 +2,12 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## Sin publicar
+
+### Cambios
+- Sincronización en segundo plano: las opciones ahora son cada 5, 15 o 30 minutos, o cada 1 hora. Se van "Solo a mano" y los intervalos más largos: lo guardado en 0 y lo que pasaba de 1 hora queda en 1 hora. El botón de sincronizar sigue funcionando en cualquier momento. Android puede demorar un turno con el celular en reposo.
+- Botón de sincronizar: giran las flechas mientras sincroniza, y un aviso de cristal abajo dice que está sincronizando y cuándo terminó. Se saca deslizándolo para cualquier lado.
+
 ## 1.4.2
 
 ### Arreglos

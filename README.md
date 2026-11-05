@@ -62,7 +62,7 @@ with the app's look (theme, background style and accent colour). Tap an event to
 **Sync**
 - Works offline: changes wait in a queue and are uploaded later. Every upload is conditional
   (ETag), so it never overwrites a newer version; on a conflict you see both and choose.
-- Background sync with WorkManager, configurable or manual only.
+- Background sync with WorkManager: every 5, 15 or 30 minutes, or every hour.
 
 **Subscriptions and files**
 - Read-only webcal/ICS subscriptions that stay on the device, refreshed every 1 h, 6 h, 12 h,

@@ -36,14 +36,12 @@ import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -55,8 +53,6 @@ import dev.liquidcalendar.data.Account
 import dev.liquidcalendar.data.AccountState
 import dev.liquidcalendar.data.CalendarRow
 import dev.liquidcalendar.data.Repo
-import dev.liquidcalendar.sync.SyncEngine
-import dev.liquidcalendar.sync.SyncResult
 import dev.liquidcalendar.ui.glass.GlassButton
 import dev.liquidcalendar.ui.glass.GlassCard
 import dev.liquidcalendar.ui.glass.GlassIconButton
@@ -98,8 +94,8 @@ fun CalendarsScreen(padding: PaddingValues, onBack: () -> Unit, onAccount: () ->
     val (accounts, calendars, infos) = data
     val caldav = accounts.firstOrNull { it.kind == Db.KIND_CALDAV }
     val subscriptions = accounts.filter { it.isSubscription }
-    var syncing by remember { mutableStateOf(false) }
-    var syncMessage by remember { mutableStateOf<String?>(null) }
+    val syncing by ManualSync.running.collectAsStateWithLifecycle()
+    val turn = rememberSyncTurn(syncing)
 
     // Importar: el selector del sistema da acceso solo a ese archivo (sin permisos de almacenamiento).
     val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -131,22 +127,11 @@ fun CalendarsScreen(padding: PaddingValues, onBack: () -> Unit, onAccount: () ->
             if (caldav != null) {
                 GlassIconButton(
                     Icons.Rounded.Sync,
-                    str(R.string.sync_now),
-                    {
-                        syncing = true
-                        syncMessage = str(R.string.syncing)
-                        scope.launch {
-                            syncMessage = when (val r = SyncEngine.sync()) {
-                                SyncResult.Ok -> str(R.string.sync_done)
-                                SyncResult.NoAccount -> null
-                                SyncResult.NeedsPassword -> str(R.string.needs_password_title)
-                                is SyncResult.Wait -> str(R.string.wait_until, timeOf(r.until))
-                                is SyncResult.Failed -> errorMessage(r.error)
-                            }
-                            syncing = false
-                        }
-                    },
-                    enabled = !syncing && caldav.state != AccountState.NEEDS_PASSWORD,
+                    str(if (syncing) R.string.syncing else R.string.sync_now),
+                    ManualSync::start,
+                    enabled = caldav.state != AccountState.NEEDS_PASSWORD,
+                    // Gira el ícono, no el botón.
+                    iconModifier = Modifier.graphicsLayer { rotationZ = turn.value },
                 )
             }
         })
@@ -184,7 +169,7 @@ fun CalendarsScreen(padding: PaddingValues, onBack: () -> Unit, onAccount: () ->
         if (caldav != null) {
             SectionLabel(str(R.string.account_on_server, caldav.username.orEmpty(), caldav.serverLabel.orEmpty()))
             GlassCard {
-                AccountStatus(caldav, syncMessage, onAccount)
+                AccountStatus(caldav, onAccount)
                 if (pendingCount > 0) SettingRow(str(R.string.pending_changes), subtitle = plural(R.plurals.pending_count, pendingCount), onClick = onChanges)
                 calendars.filter { it.accountId == caldav.id && !it.missing }.forEach { c ->
                     CalendarItem(c, infos[c.id]) { onAction(CalendarsAction.Edit(CalendarTarget.Existing(c.id))) }
@@ -240,7 +225,7 @@ private fun readLimited(input: java.io.InputStream, max: Long): ByteArray {
 }
 
 @Composable
-private fun AccountStatus(account: Account, message: String?, onAccount: () -> Unit) {
+private fun AccountStatus(account: Account, onAccount: () -> Unit) {
     val p = LocalGlass.current
     when {
         account.state == AccountState.NEEDS_PASSWORD -> SettingRow(
@@ -250,10 +235,10 @@ private fun AccountStatus(account: Account, message: String?, onAccount: () -> U
         )
         account.retryAt != null && account.retryAt > System.currentTimeMillis() ->
             Text(str(R.string.wait_until, timeOf(Instant.ofEpochMilli(account.retryAt))), fontSize = 13.sp, color = p.contentSecondary)
-        account.state == AccountState.ERROR && message == null ->
+        account.state == AccountState.ERROR ->
             Text(errorMessage(account.lastError), fontSize = 13.sp, color = p.danger)
         else -> Text(
-            message ?: account.lastSync?.let { str(R.string.last_sync, dateTimeOf(Instant.ofEpochMilli(it))) } ?: str(R.string.never_synced),
+            account.lastSync?.let { str(R.string.last_sync, dateTimeOf(Instant.ofEpochMilli(it))) } ?: str(R.string.never_synced),
             fontSize = 13.sp,
             color = p.contentSecondary,
         )
@@ -288,5 +273,5 @@ private fun CalendarItem(c: CalendarRow, info: CalendarInfo?, onOpen: () -> Unit
 private val timeFormat = DateTimeFormatter.ofPattern("HH:mm")
 private val dateTimeFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
 
-private fun timeOf(i: Instant): String = timeFormat.format(LocalDateTime.ofInstant(i, ZoneId.systemDefault()))
+internal fun timeOf(i: Instant): String = timeFormat.format(LocalDateTime.ofInstant(i, ZoneId.systemDefault()))
 private fun dateTimeOf(i: Instant): String = dateTimeFormat.format(LocalDateTime.ofInstant(i, ZoneId.systemDefault()))

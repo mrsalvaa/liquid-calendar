@@ -370,6 +370,7 @@ fun GlassIconButton(
     size: Dp = 48.dp,
     prominent: Boolean = false,
     enabled: Boolean = true,
+    iconModifier: Modifier = Modifier,
 ) {
     val p = LocalGlass.current
     GlassSurface(
@@ -385,7 +386,7 @@ fun GlassIconButton(
         Icon(
             styled(icon),
             contentDescription,
-            Modifier.align(Alignment.Center).size(size * 0.45f),
+            Modifier.align(Alignment.Center).size(size * 0.45f).then(iconModifier),
             tint = if (prominent) p.onAccent else p.content,
         )
     }

@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.liquidcalendar.BuildConfig
 import dev.liquidcalendar.R
+import dev.liquidcalendar.core.sync.SyncInterval
 import dev.liquidcalendar.data.AppSettings
 import dev.liquidcalendar.data.AccountState
 import dev.liquidcalendar.data.Repo
@@ -93,12 +94,8 @@ fun SettingsScreen(padding: PaddingValues, onBack: () -> Unit, onAccount: () -> 
         if (account != null) {
             SectionLabel(str(R.string.sync_interval))
             GlassCard {
-                ChipRow(SyncScheduler.INTERVALS, s.syncIntervalMinutes, { m ->
-                    when {
-                        m == 0 -> str(R.string.sync_manual)
-                        m < 60 -> str(R.string.sync_every_min, m)
-                        else -> str(R.string.sync_every_h, m / 60)
-                    }
+                ChipRow(SyncInterval.OPTIONS, SyncInterval.normalize(s.syncIntervalMinutes), { m ->
+                    if (m < 60) str(R.string.sync_every_min, m) else str(R.string.sync_every_h, m / 60)
                 }) { m ->
                     edit { it.copy(syncIntervalMinutes = m) }
                     SyncScheduler.refreshSchedule()
