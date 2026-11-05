@@ -2,7 +2,7 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
-## Unreleased
+## 1.5.0
 
 ### Changed
 - Background sync: the options are now every 5, 15 or 30 minutes, or every hour. "Manual only" and the longer intervals are gone: a saved 0 becomes 1 hour, and anything above 1 hour becomes 1 hour. The Sync button still works at any time. Android may delay a turn while the phone is idle.
