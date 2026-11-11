@@ -89,11 +89,11 @@ Bajá el APK desde [Releases](../../releases) e instalalo.
 Comprobá que el archivo no fue alterado:
 
 ```bash
-sha256sum -c liquid-calendar-v1.5.1.apk.sha256
+sha256sum -c liquid-calendar-v1.6.0.apk.sha256
 ```
 
 ```
-ef2c1098cd94091bc2929d4aaf2c307dd89d34ac257714d10275e89214e9cc6e  liquid-calendar-v1.5.1.apk
+62a7eb3e24bf4ac51683396d05a105fd367469d7aced35bf9dade42c2a8ee882  liquid-calendar-v1.6.0.apk
 ```
 
 Y que está firmado con la clave del proyecto (huella SHA-256 del certificado):
@@ -103,7 +103,7 @@ Y que está firmado con la clave del proyecto (huella SHA-256 del certificado):
 ```
 
 ```bash
-apksigner verify --print-certs liquid-calendar-v1.5.1.apk
+apksigner verify --print-certs liquid-calendar-v1.6.0.apk
 ```
 
 ## Configurar el servidor CalDAV
