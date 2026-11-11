@@ -218,7 +218,7 @@ fun AccountScreen(padding: PaddingValues, onBack: () -> Unit) {
                         CalendarApp.scope.launch {
                             // Contraseña vacía = conservar la guardada.
                             SyncEngine.saveAccount(existing?.id, url, user.trim(), nickname.trim().ifEmpty { null }, password.ifEmpty { null }, discovery)
-                            SyncEngine.sync()
+                            SyncEngine.sync(now = true)
                         }
                         onBack()
                     }

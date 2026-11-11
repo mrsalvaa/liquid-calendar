@@ -2,6 +2,15 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
+## Unreleased
+
+### Changed
+- Repeat: the options (doesn't repeat, every day, week, month, year) are now a dropdown that opens in a glass window, like the ones in Contacts.
+
+### Fixed
+- After a network error, the Sync button and any new, edited or deleted event now try the server right away instead of waiting. The app's own wait between automatic retries is now at most 30 minutes (it could reach 6 hours).
+- The account no longer says "The server asked to wait" after a network error: it says it couldn't connect and when it will try again. That message is only shown when the server really asks to wait.
+
 ## 1.5.1
 
 ### Changed

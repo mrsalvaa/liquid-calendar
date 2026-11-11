@@ -8,6 +8,8 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CalendarViewDay
@@ -29,6 +31,8 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.CalendarViewDay
@@ -61,6 +65,8 @@ private val SOLID_ICONS: Map<ImageVector, ImageVector> by lazy {
         Icons.Rounded.DeleteOutline to Icons.Outlined.DeleteOutline,
         Icons.Rounded.FileDownload to Icons.Outlined.FileDownload,
         Icons.Rounded.Add to Icons.Outlined.Add,
+        Icons.Rounded.Check to Icons.Outlined.Check,
+        Icons.Rounded.ExpandMore to Icons.Outlined.ExpandMore,
         Icons.Rounded.Remove to Icons.Outlined.Remove,
         Icons.Rounded.PhoneAndroid to Icons.Outlined.PhoneAndroid,
         Icons.Rounded.Sync to Icons.Outlined.Sync,

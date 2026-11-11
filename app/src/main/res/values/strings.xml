@@ -92,6 +92,7 @@
     <string name="needs_password_title">Enter your password again</string>
     <string name="needs_password_text">The server rejected the password. Nothing will sync until you enter it again (some servers block your IP after a few failed attempts).</string>
     <string name="needs_password_short">Needs your password again</string>
+    <string name="retry_at">Trying again at %s.</string>
     <string name="wait_until">The server asked to wait until %s.</string>
 
     <!-- Cuenta CalDAV -->

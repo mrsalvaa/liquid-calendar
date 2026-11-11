@@ -27,6 +27,7 @@ import dev.liquidcalendar.core.ics.RepeatEnd
 import dev.liquidcalendar.core.ics.RepeatRule
 import dev.liquidcalendar.core.ics.Repeats
 import dev.liquidcalendar.core.ics.Repetition
+import dev.liquidcalendar.ui.components.Dropdown
 import dev.liquidcalendar.ui.glass.GlassChip
 import dev.liquidcalendar.ui.glass.GlassIconButton
 import dev.liquidcalendar.ui.glass.LocalGlass
@@ -70,7 +71,6 @@ fun RepeatEditor(
     val p = LocalGlass.current
     val rule = (repeat as? Repetition.Rule)?.rule
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(str(R.string.repeat), fontSize = 14.sp, fontWeight = FontWeight.Medium)
         // "Personalizada" solo aparece si la regla viene de otra app.
         val options = RepeatOption.entries.filter { it != RepeatOption.CUSTOM || repeat is Repetition.Custom }
         val selected = when (repeat) {
@@ -78,7 +78,8 @@ fun RepeatEditor(
             is Repetition.Custom -> RepeatOption.CUSTOM
             is Repetition.Rule -> RepeatOption.of(repeat.rule.frequency)
         }
-        ChipRow(options, selected, { str(it.label) }) { option ->
+        // Las opciones en una ventana emergente, como los desplegables de Contactos.
+        Dropdown(str(R.string.repeat), options, selected, { str(it.label) }) { option ->
             val f = option.frequency
             when {
                 option == RepeatOption.NONE -> onChange(Repetition.None)

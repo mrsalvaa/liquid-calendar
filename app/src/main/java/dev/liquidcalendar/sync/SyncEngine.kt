@@ -55,13 +55,14 @@ sealed interface TestResult {
 }
 
 /**
- * Sincronización con el servidor CalDAV. Una sola a la vez; ninguna regla de reintento se salta
- * por pedirla a mano: un 401 deja la cuenta en "requiere contraseña" y un Retry-After se respeta
- * también en el botón de sincronizar.
+ * Sincronización con el servidor CalDAV. Una sola a la vez. Un 401 deja la cuenta en "requiere
+ * contraseña" y un Retry-After del servidor se respeta también en el botón de sincronizar. La
+ * espera propia tras errores de red o 5xx es solo para los turnos en segundo plano: el botón y los
+ * cambios locales (crear, editar, borrar) prueban siempre en el momento.
  */
 object SyncEngine {
     private val mutex = Mutex()
-    private val policy = RetryPolicy()
+    private val policy = RetryPolicy(max = Duration.ofMinutes(30))
     private lateinit var credentials: CredentialStore
 
     /** Contraseñas rechazadas recientemente (persistido, para que reiniciar la app no lo borre). */
@@ -152,7 +153,7 @@ object SyncEngine {
         mutex.withLock {
             val account = Repo.caldavAccount() ?: return@withLock OpResult.NoAccount
             if (account.state == AccountState.NEEDS_PASSWORD) return@withLock OpResult.NeedsPassword
-            account.retryAt?.let { if (it > System.currentTimeMillis()) return@withLock OpResult.Wait(Instant.ofEpochMilli(it)) }
+            serverWait(account)?.let { return@withLock OpResult.Wait(it) }
             val password = credentials.load(account.id)
             val server = (account.serverUrl?.let { parseServer(it) } as? ServerUrl.Result.Ok)?.url
             val home = account.homeUrl
@@ -172,12 +173,28 @@ object SyncEngine {
         }
     }
 
-    suspend fun sync(): SyncResult = withContext(Dispatchers.IO) {
+    /**
+     * Hasta cuándo pidió esperar el servidor (429/503 con Retry-After), o null. La espera propia
+     * tras errores de red no cuenta acá: esa la saltan el botón y los cambios locales.
+     */
+    private fun serverWait(account: dev.liquidcalendar.data.Account): Instant? =
+        account.retryAt?.takeIf { it > System.currentTimeMillis() && account.lastError == SERVER_WAIT }?.let(Instant::ofEpochMilli)
+
+    private const val SERVER_WAIT = "RetryLater"
+
+    /**
+     * [now] en true (botón, cambio local) prueba aunque esté corriendo la espera propia; un error
+     * de red devuelve Failed con el motivo en vez de una hora de espera.
+     */
+    suspend fun sync(now: Boolean = false): SyncResult = withContext(Dispatchers.IO) {
         mutex.withLock {
             val account = Repo.caldavAccount() ?: return@withLock SyncResult.NoAccount
             if (account.state == AccountState.NEEDS_PASSWORD) return@withLock SyncResult.NeedsPassword
-            val now = Instant.now()
-            account.retryAt?.let { if (it > now.toEpochMilli()) return@withLock SyncResult.Wait(Instant.ofEpochMilli(it)) }
+            if (now) {
+                serverWait(account)?.let { return@withLock SyncResult.Wait(it) }
+            } else {
+                account.retryAt?.let { if (it > System.currentTimeMillis()) return@withLock SyncResult.Wait(Instant.ofEpochMilli(it)) }
+            }
             val password = credentials.load(account.id)
             val server = (account.serverUrl?.let { parseServer(it) } as? ServerUrl.Result.Ok)?.url
             if (password == null || server == null || account.username == null) {
@@ -214,7 +231,7 @@ object SyncEngine {
                     is RetryDecision.RetryIn -> {
                         val until = Instant.now().plus(decision.delay)
                         Repo.updateSyncState(account.id, AccountState.ERROR, e.code, until.toEpochMilli(), account.attempts + 1)
-                        SyncResult.Wait(until)
+                        if (now && e !is DavException.RetryLater) SyncResult.Failed(e) else SyncResult.Wait(until)
                     }
                     is RetryDecision.GiveUp -> {
                         Repo.updateSyncState(account.id, AccountState.ERROR, e.code, null, 0)

@@ -233,8 +233,12 @@ private fun AccountStatus(account: Account, onAccount: () -> Unit) {
             subtitle = str(R.string.needs_password_text),
             onClick = onAccount,
         )
-        account.retryAt != null && account.retryAt > System.currentTimeMillis() ->
+        // Solo un 429/503 es "el servidor pidió esperar"; tras un corte de red se dice el motivo y
+        // cuándo vuelve a probar sola (el botón de sincronizar prueba igual en el momento).
+        account.retryAt != null && account.retryAt > System.currentTimeMillis() && account.lastError == "RetryLater" ->
             Text(str(R.string.wait_until, timeOf(Instant.ofEpochMilli(account.retryAt))), fontSize = 13.sp, color = p.contentSecondary)
+        account.retryAt != null && account.retryAt > System.currentTimeMillis() ->
+            Text(errorMessage(account.lastError) + " " + str(R.string.retry_at, timeOf(Instant.ofEpochMilli(account.retryAt))), fontSize = 13.sp, color = p.danger)
         account.state == AccountState.ERROR ->
             Text(errorMessage(account.lastError), fontSize = 13.sp, color = p.danger)
         else -> Text(

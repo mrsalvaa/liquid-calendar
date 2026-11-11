@@ -93,6 +93,7 @@
     <string name="needs_password_title">Volvé a ingresar la contraseña</string>
     <string name="needs_password_text">El servidor rechazó la contraseña. No se sincroniza nada hasta que la ingreses de nuevo (algunos servidores bloquean la IP tras unos pocos intentos fallidos).</string>
     <string name="needs_password_short">Requiere volver a ingresar la contraseña</string>
+    <string name="retry_at">Vuelve a probar a las %s.</string>
     <string name="wait_until">El servidor pidió esperar hasta las %s.</string>
 
     <!-- Cuenta CalDAV -->

@@ -2,6 +2,15 @@
 
 [English](CHANGELOG.md) | **Español**
 
+## Sin publicar
+
+### Cambiado
+- Repetir: las opciones (no se repite, cada día, semana, mes, año) ahora son un desplegable que se abre en una ventana de cristal, como los de Contactos.
+
+### Arreglado
+- Después de un error de red, el botón Sincronizar y cualquier evento nuevo, editado o borrado prueban el servidor en el momento en vez de esperar. La espera propia entre reintentos automáticos ahora es de 30 minutos como mucho (podía llegar a 6 horas).
+- La cuenta ya no dice "El servidor pidió esperar" después de un error de red: dice que no se pudo conectar y a qué hora vuelve a probar. Ese mensaje queda solo para cuando el servidor de verdad pide esperar.
+
 ## 1.5.1
 
 ### Cambios

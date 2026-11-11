@@ -81,7 +81,7 @@ object ManualSync {
         _notice.value = Notice(str(R.string.syncing), lasts = false)
         CalendarApp.scope.launch {
             val started = System.currentTimeMillis()
-            val result = SyncEngine.sync()
+            val result = SyncEngine.sync(now = true)
             delay(SHOWN_AT_LEAST_MS - (System.currentTimeMillis() - started))
             _notice.value = when (result) {
                 SyncResult.Ok -> str(R.string.sync_done)

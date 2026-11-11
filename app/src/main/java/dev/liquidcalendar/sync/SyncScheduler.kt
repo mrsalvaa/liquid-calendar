@@ -17,6 +17,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import androidx.work.workDataOf
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.TimeUnit
@@ -86,10 +87,15 @@ object SyncScheduler {
         }
     }
 
-    /** Subir pronto un cambio local (unos segundos de margen para agrupar varios cambios seguidos). */
+    /**
+     * Subir pronto un cambio local (unos segundos de margen para agrupar varios cambios seguidos).
+     * Prueba aunque esté corriendo la espera tras un error de red: si sigue sin conexión, queda en
+     * la cola y sale con el próximo reintento.
+     */
     fun pushSoon() {
         val request = OneTimeWorkRequestBuilder<SyncWorker>()
             .setInitialDelay(3, TimeUnit.SECONDS)
+            .setInputData(workDataOf(SyncWorker.NOW to true))
             .setConstraints(network)
             .build()
         WorkManager.getInstance(app).enqueueUniqueWork(SOON, ExistingWorkPolicy.REPLACE, request)
@@ -119,13 +125,19 @@ object SyncScheduler {
 /** Un intento de sincronización. Nunca pide reintentos a WorkManager: los decide SyncEngine. */
 class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
-        val result = SyncEngine.sync()
-        if (result is SyncResult.Wait) SyncScheduler.retryAt(result.until)
+        val result = SyncEngine.sync(now = inputData.getBoolean(NOW, false))
+        // Si quedó una espera (del servidor o propia tras un error de red), el reintento va a esa hora.
+        Repo.caldavAccount()?.retryAt?.takeIf { it > System.currentTimeMillis() }?.let { SyncScheduler.retryAt(Instant.ofEpochMilli(it)) }
         // Las suscripciones van por su cuenta: no dependen de la cuenta CalDAV ni la frenan.
         Subscriptions.refreshDue()
         // Sin cuenta o sin contraseña no hay nada que hacer hasta guardarlas, y eso reprograma; una
         // espera sigue desde su propio reintento.
         if (result is SyncResult.Ok || result is SyncResult.Failed) SyncScheduler.continueChain()
         return Result.success()
+    }
+
+    companion object {
+        /** Un cambio local: probar ya, sin esperar el fin de la espera propia. */
+        const val NOW = "now"
     }
 }
