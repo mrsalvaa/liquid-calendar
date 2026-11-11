@@ -2,7 +2,7 @@
 
 [English](CHANGELOG.md) | **Español**
 
-## Sin publicar
+## 1.6.0
 
 ### Cambiado
 - Repetir: las opciones (no se repite, cada día, semana, mes, año) ahora son un desplegable que se abre en una ventana de cristal, como los de Contactos.

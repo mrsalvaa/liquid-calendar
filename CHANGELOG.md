@@ -2,7 +2,7 @@
 
 **English** | [Español](CHANGELOG.es.md)
 
-## Unreleased
+## 1.6.0
 
 ### Changed
 - Repeat: the options (doesn't repeat, every day, week, month, year) are now a dropdown that opens in a glass window, like the ones in Contacts.
