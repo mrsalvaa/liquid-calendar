@@ -131,6 +131,7 @@ object Reminders {
             .build()
         val n = NotificationCompat.Builder(app, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
+            .setLargeIcon(dev.liquidcalendar.util.AppIcons.large(app))
             .setColor(item.calendar.color)
             .setContentTitle(title)
             .setContentText(text)
